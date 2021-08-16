@@ -17,7 +17,7 @@ English Version: [README.md](README.md)
 ## 使用平台：
 （仅列出了我测试并使用的平台版本。）
 - **Tampermonkey** (测试于v4.13.6136)
-- Firefox (测试于v85.0.2 64-bit)
+- Firefox (测试于v91.0 64-bit)
 - Windows 7 SP1，Windows 10 20H2 (我测试用的版本)
 
 ## 使用方法:
