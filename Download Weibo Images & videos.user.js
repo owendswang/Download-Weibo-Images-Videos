@@ -1,7 +1,6 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos
 // @name:zh-CN   下载微博图片和视频
-// @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  Download weibo images and videos.
 // @description:zh-CN 下载微博图片和视频。
@@ -9,6 +8,7 @@
 // @match        https://weibo.com/*
 // @icon         https://weibo.com/favicon.ico
 // @license      MIT
+// @homepage     https://greasyfork.org/scripts/430877-download-weibo-images-videos?locale_override=1
 // @supportURL   https://github.com/owendswang/Download-Weibo-Images-Videos
 // @grant        GM_download
 // @grant        GM_getValue
