@@ -1,6 +1,6 @@
 **中文介绍：[README.zh.md](README.zh.md)**
 
-# Download-Weibo-Images-Videos
+# Download Weibo Images & Videos
 A Tampermonkey script to download weibo images and videos.
 
 ## Download:
