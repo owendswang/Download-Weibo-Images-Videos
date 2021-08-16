@@ -29,8 +29,8 @@ Or Install manually:
 2. Open Tampermonkey. -> Switch to 'Utilities' tab. -> 'Zip' -> 'Import': Browse -> Choose the ZIP file -> 'Install'.
 
 ## Tutorial:
-1. First time, this setting would show up. Choose any one you like.
+1. First time, this setting would show up. Choose any one you like.\
 ![3.jpg](res/3.JPG?raw=true)
-2. If you choose click a button to add download buttons, you would find that button on the left of the page.
-   If you would like to change the way to add download buttons, just click the setting button on the left of the page.
+2. If you choose click a button to add download buttons, you would find that button on the left of the page.\
+   If you would like to change the way to add download buttons, just click the setting button on the left of the page.\
 ![2.jpg](res/2.JPG?raw=true)
