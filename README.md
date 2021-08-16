@@ -2,6 +2,7 @@
 
 # Download Weibo Images & Videos
 A Tampermonkey script to download weibo images and videos.
+- Only support new version weibo UI.
 - Supported in Chinese and English.
 - Not support live photo
 - Support downloading images and videos
