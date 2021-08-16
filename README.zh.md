@@ -11,7 +11,7 @@ English Version: [README.md](README.md)
 ![1.jpg](res/1.JPG?raw=true)
 
 ## 下载:
-- 前往[Greasy Fork](https://greasyfork.org/scripts/430877-download-weibo-images-videos)。
+- 前往[Greasy Fork](https://greasyfork.org/scripts/430877)。
 - 或前往[发布页面](releases)。
 
 ## 使用平台：
@@ -21,7 +21,7 @@ English Version: [README.md](README.md)
 - Windows 7 SP1，Windows 10 20H2 (我测试用的版本)
 
 ## 使用方法:
-从[Greasy Fork](https://greasyfork.org/scripts/430877-download-weibo-images-videos)直接安装。
+从[Greasy Fork](https://greasyfork.org/scripts/430877)直接安装。
 
 或手动安装：
 1. 下载最新的ZIP包 (从[here](releases)下载).
