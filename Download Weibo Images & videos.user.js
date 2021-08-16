@@ -8,7 +8,7 @@
 // @match        https://weibo.com/*
 // @icon         https://weibo.com/favicon.ico
 // @license      MIT
-// @homepage     https://greasyfork.org/scripts/430877-download-weibo-images-videos?locale_override=1
+// @homepage     https://greasyfork.org/scripts/430877-download-weibo-images-videos
 // @supportURL   https://github.com/owendswang/Download-Weibo-Images-Videos
 // @grant        GM_download
 // @grant        GM_getValue
