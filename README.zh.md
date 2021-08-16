@@ -2,6 +2,7 @@ English Version: [README.md](README.md)
 
 # 下载微博图片和视频
 用于从微博网站上下载图片和视频的Tampermonkey脚本。
+- 仅支持新版微博页面
 - 支持中英双语
 - 不支持live photo
 - 支持下载图片和视频
