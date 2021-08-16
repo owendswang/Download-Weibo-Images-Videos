@@ -10,7 +10,7 @@ A Tampermonkey script to download weibo images and videos.
 ![1.jpg](res/1.JPG?raw=true)
 
 ## Download:
-- Go to [Greasy Fork](https://greasyfork.org/zh-CN/scripts/422130-download-pictures-from-telegraph).
+- Go to [Greasy Fork](https://greasyfork.org/scripts/430877-download-weibo-images-videos).
 
 Or
 - Go to [Release Page](releases).
@@ -22,7 +22,7 @@ Or
 - Windows 7 SP1, Windows 10 20H2 (which I tested on)
 
 ## Usage:
-Install from [Greasy Fork](https://greasyfork.org/zh-CN/scripts/422130-download-pictures-from-telegraph).
+Install from [Greasy Fork](https://greasyfork.org/scripts/430877-download-weibo-images-videos).
 
 Or Install manually:
 1. Download the newest release ZIP file (from [here](releases)).
