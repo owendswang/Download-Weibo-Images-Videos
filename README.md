@@ -11,7 +11,7 @@ A Tampermonkey script to download weibo images and videos.
 ![1.jpg](res/1.JPG?raw=true)
 
 ## Download:
-- Go to [Greasy Fork](https://greasyfork.org/scripts/430877-download-weibo-images-videos).
+- Go to [Greasy Fork](https://greasyfork.org/scripts/430877).
 
 Or
 - Go to [Release Page](releases).
@@ -23,7 +23,7 @@ Or
 - Windows 7 SP1, Windows 10 20H2 (which I tested on)
 
 ## Usage:
-Install from [Greasy Fork](https://greasyfork.org/scripts/430877-download-weibo-images-videos).
+Install from [Greasy Fork](https://greasyfork.org/scripts/430877).
 
 Or Install manually:
 1. Download the newest release ZIP file (from [here](releases)).
