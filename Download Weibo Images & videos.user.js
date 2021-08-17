@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.1
+// @version      0.2
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -13,6 +13,7 @@
 // @grant        GM_download
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @namespace http://tampermonkey.net/
 // ==/UserScript==
 
 (function() {
@@ -51,47 +52,62 @@
         return xmlHttp.responseText;
     }
 
-    function addDlImgBtn(footer) {
-        var div = document.createElement('div');
-        div.className = 'woo-box-item-flex toolbar_item_1ky_D';
+    function addDlBtn(footer) {
+        var dlBtnDiv = document.createElement('div');
+        dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D';
         var divInDiv = document.createElement('div');
         divInDiv.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_likebox_1rLfZ';
-        var downloadButton = document.createElement('button');
-        downloadButton.className = 'woo-like-main toolbar_btn_Cg9tz';
-        downloadButton.setAttribute('tabindex', '0');
-        downloadButton.setAttribute('title', '下载');
-        downloadButton.innerHTML = '<span class="woo-like-iconWrap">\
+        var dlBtn = document.createElement('button');
+        dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz download-button';
+        dlBtn.setAttribute('tabindex', '0');
+        dlBtn.setAttribute('title', '下载');
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap">\
 <svg class="woo-like-icon">\
 <use xlink:href="#woo_svg_download">\
 </use>\
 </svg>\
 </span>\
 <span class="woo-like-count">下载</span>';
-        downloadButton.addEventListener('click', function(event) {
+        dlBtn.addEventListener('click', function(event) {
             var article = this.parentElement.parentElement.parentElement.parentElement.parentElement;
             if( article.tagName.toLowerCase() == 'article') {
                 var contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
+                var header = article.getElementsByTagName('header')[0];
+                var postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
+                var postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
+                var response = '';
+                var resJson = {};
+                if(footer.parentElement.getElementsByTagName('video').length > 0) {
+                    console.log('download video');
+                    response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
+                    resJson = JSON.parse(response);
+                    // console.log(resJson);
+                    var mediaInfo = resJson.page_info.media_info;
+                    var largeVidUrl = mediaInfo.playback_list[0].play_info.url;
+                    var vidName = largeVidUrl.split('?')[0];
+                    vidName = vidName.split('/')[vidName.split('/').length - 1];
+                    GM_download(largeVidUrl, vidName);
+                    // console.log(largeVidUrl);
+                }
                 if(contentRow.getElementsByClassName('picture_picNum_3r6Z2').length > 0) {
-                    // console.log('more than 9 images');
-                    var header = article.getElementsByTagName('header')[0];
-                    var postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
-                    var postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                    var response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
-                    var resJson = JSON.parse(response);
+                    console.log('download more than 9 images');
+                    response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
+                    resJson = JSON.parse(response);
                     // console.log(resJson);
                     var picInfos = [];
                     if(resJson.hasOwnProperty('retweeted_status')) {
-                        picInfos = resJson['retweeted_status']['pic_infos'];
+                        picInfos = resJson.retweeted_status.pic_infos;
                     } else {
-                        picInfos = resJson['pic_infos'];
+                        picInfos = resJson.pic_infos;
                     }
                     for (const [id, pic] of Object.entries(picInfos)) {
-                        var largePicUrl = pic['largest']['url'];
+                        var largePicUrl = pic.largest.url;
                         var picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1];
                         GM_download(largePicUrl, picName);
                         // console.log(largePicUrl);
                     }
                 } else {
+                    console.log('download images');
                     var imgsList = contentRow.getElementsByTagName('img');
                     imgsList.forEach(function(img) {
                         var imgUrl = img.src;
@@ -106,51 +122,9 @@
                 }
             }
         });
-        divInDiv.appendChild(downloadButton);
-        div.appendChild(divInDiv);
-        footer.firstChild.appendChild(div);
-        footer.classList.add('addedDlBtn');
-        // console.log('added download button');
-    }
-
-    function addDlVidBtn(footer) {
-        var div = document.createElement('div');
-        div.className = 'woo-box-item-flex toolbar_item_1ky_D';
-        var divInDiv = document.createElement('div');
-        divInDiv.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_likebox_1rLfZ';
-        var downloadButton = document.createElement('button');
-        downloadButton.className = 'woo-like-main toolbar_btn_Cg9tz';
-        downloadButton.setAttribute('tabindex', '0');
-        downloadButton.setAttribute('title', '下载');
-        downloadButton.innerHTML = '<span class="woo-like-iconWrap">\
-<svg class="woo-like-icon">\
-<use xlink:href="#woo_svg_download">\
-</use>\
-</svg>\
-</span>\
-<span class="woo-like-count">下载</span>';
-        downloadButton.addEventListener('click', function(event) {
-            var article = this.parentElement.parentElement.parentElement.parentElement.parentElement;
-            if( article.tagName.toLowerCase() == 'article') {
-                var contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
-                var header = article.getElementsByTagName('header')[0];
-                var postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
-                var postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                var response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
-                var resJson = JSON.parse(response);
-                // console.log(resJson);
-                var mediaInfo = resJson['page_info']['media_info'];
-                var largeVidUrl = mediaInfo['playback_list'][0]['play_info']['url'];
-                var vidName = largeVidUrl.split('?')[0];
-                vidName = vidName.split('/')[vidName.split('/').length - 1];
-                GM_download(largeVidUrl, vidName);
-                // console.log(largeVidUrl);
-            }
-        });
-        divInDiv.appendChild(downloadButton);
-        div.appendChild(divInDiv);
-        footer.firstChild.appendChild(div);
-        footer.classList.add('addedDlBtn');
+        divInDiv.appendChild(dlBtn);
+        dlBtnDiv.appendChild(divInDiv);
+        footer.firstChild.appendChild(dlBtnDiv);
         // console.log('added download button');
     }
 
@@ -166,7 +140,7 @@
         var arts = document.getElementsByTagName('article');
         var footers = document.getElementsByTagName('footer');
         footers.forEach(function(footer) {
-            if(footer.classList.contains('addedDlBtn')) {
+            if(footer.getElementsByClassName('download-button').length > 0) {
                 // console.log('already added download button');
             } else {
                 if(footer.parentElement.tagName.toLowerCase() == 'article') {
@@ -179,12 +153,12 @@
                             }
                         });
                         if(addFlag == true) {
-                            addDlImgBtn(footer);
+                            addDlBtn(footer);
                         }
                     }
                     var videos = footer.parentElement.getElementsByTagName('video');
                     if(videos.length > 0) {
-                        addDlVidBtn(footer);
+                        addDlBtn(footer);
                     }
                 }
             }
