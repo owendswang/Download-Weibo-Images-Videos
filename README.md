@@ -14,7 +14,7 @@ A Tampermonkey script to download weibo images and videos.
 - Go to [Greasy Fork](https://greasyfork.org/scripts/430877).
 
 Or
-- Go to [Release Page](releases).
+- Go to [Release Page](https://github.com/owendswang/Download-Weibo-Images-Videos/releases).
 
 ## Platform:
 (Only listed those versions I tested. You could try it on other platforms by yourself.)
@@ -26,7 +26,7 @@ Or
 Install from [Greasy Fork](https://greasyfork.org/scripts/430877).
 
 Or Install manually:
-1. Download the newest release ZIP file (from [here](releases)).
+1. Download the newest release ZIP file (from [here](https://github.com/owendswang/Download-Weibo-Images-Videos/releases)).
 2. Open Tampermonkey. -> Switch to 'Utilities' tab. -> 'Zip' -> 'Import': Browse -> Choose the ZIP file -> 'Install'.
 
 ## Tutorial:
