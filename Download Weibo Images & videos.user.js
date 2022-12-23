@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.2
+// @version      0.3
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -82,43 +82,49 @@
                     response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
                     resJson = JSON.parse(response);
                     // console.log(resJson);
-                    var mediaInfo = resJson.page_info.media_info;
-                    var largeVidUrl = mediaInfo.playback_list[0].play_info.url;
-                    var vidName = largeVidUrl.split('?')[0];
-                    vidName = vidName.split('/')[vidName.split('/').length - 1];
-                    GM_download(largeVidUrl, vidName);
-                    // console.log(largeVidUrl);
+                    if(resJson.hasOwnProperty('page_info')) {
+                        var mediaInfo = resJson.page_info.media_info;
+                        var largeVidUrl = mediaInfo.playback_list[0].play_info.url;
+                        var vidName = largeVidUrl.split('?')[0];
+                        vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
+                        GM_download({
+                            url: largeVidUrl,
+                            name:vidName,
+                        });
+                        // console.log(largeVidUrl);
+                    }
                 }
-                if(contentRow.getElementsByClassName('picture_picNum_3r6Z2').length > 0) {
-                    console.log('download more than 9 images');
-                    response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
-                    resJson = JSON.parse(response);
-                    // console.log(resJson);
-                    var picInfos = [];
-                    if(resJson.hasOwnProperty('retweeted_status')) {
-                        picInfos = resJson.retweeted_status.pic_infos;
-                    } else {
-                        picInfos = resJson.pic_infos;
-                    }
-                    for (const [id, pic] of Object.entries(picInfos)) {
-                        var largePicUrl = pic.largest.url;
-                        var picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1];
-                        GM_download(largePicUrl, picName);
-                        // console.log(largePicUrl);
-                    }
+                console.log('download images');
+                response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
+                resJson = JSON.parse(response);
+                // console.log(resJson);
+                var picInfos = [];
+                if(resJson.hasOwnProperty('retweeted_status')) {
+                    picInfos = resJson.retweeted_status.pic_infos;
                 } else {
-                    console.log('download images');
-                    var imgsList = contentRow.getElementsByTagName('img');
-                    imgsList.forEach(function(img) {
-                        var imgUrl = img.src;
-                        var imgName = imgUrl.split('/')[imgUrl.split('/').length - 1];
-                        var parser = document.createElement('a');
-                        parser.href = imgUrl;
-                        var imgUrlHost = parser.origin;
-                        var largeImgUrl = imgUrlHost + '/large/' + imgName;
-                        GM_download(largeImgUrl, imgName);
-                        // console.log(largeImgUrl);
+                    picInfos = resJson.pic_infos;
+                }
+                for (const [id, pic] of Object.entries(picInfos)) {
+                    var largePicUrl = pic.largest.url;
+                    var picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
+                    GM_download({
+                        url:largePicUrl,
+                        name: picName,
+                        headers: {
+                            'Referer': 'https://weibo.com/',
+                            'Origin': 'https://weibo.com/'
+                        },
                     });
+                    // console.log(largePicUrl);
+                    if(pic.hasOwnProperty('video')) {
+                        var videoUrl = pic.video;
+                        var videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
+                        // console.log(videoName);
+                        GM_download({
+                            url:videoUrl,
+                            name: videoName,
+                        });
+                    }
                 }
             }
         });
@@ -155,10 +161,11 @@
                         if(addFlag == true) {
                             addDlBtn(footer);
                         }
-                    }
-                    var videos = footer.parentElement.getElementsByTagName('video');
-                    if(videos.length > 0) {
-                        addDlBtn(footer);
+                    } else {
+                        var videos = footer.parentElement.getElementsByTagName('video');
+                        if(videos.length > 0) {
+                            addDlBtn(footer);
+                        }
                     }
                 }
             }
