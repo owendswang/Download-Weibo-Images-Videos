@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.3
+// @version      0.4
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -14,6 +14,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @namespace http://tampermonkey.net/
+// @run-at       document-end
 // ==/UserScript==
 
 (function() {
@@ -145,31 +146,35 @@
 
         var arts = document.getElementsByTagName('article');
         var footers = document.getElementsByTagName('footer');
-        footers.forEach(function(footer) {
+        for (const footer of footers) {
             if(footer.getElementsByClassName('download-button').length > 0) {
                 // console.log('already added download button');
             } else {
+                // console.log(footer.parentElement);
                 if(footer.parentElement.tagName.toLowerCase() == 'article') {
-                    var imgs = footer.parentElement.getElementsByTagName('img');
+                    const article = footer.parentElement;
+                    const imgs = article.getElementsByTagName('img');
+                    var added = false;
+                    // console.log(imgs);
                     if(imgs.length > 0) {
                         var addFlag = false;
-                        imgs.forEach(function(img) {
-                            if(img.className == 'woo-picture-img') {
+                        for (const img of imgs) {
+                            if(['woo-picture-img', 'picture_focusImg_1z5In'].includes(img.className)) {
                                 addFlag = true;
                             }
-                        });
+                        }
                         if(addFlag == true) {
                             addDlBtn(footer);
+                            added = true;
                         }
-                    } else {
-                        var videos = footer.parentElement.getElementsByTagName('video');
-                        if(videos.length > 0) {
-                            addDlBtn(footer);
-                        }
+                    }
+                    var videos = article.getElementsByTagName('video');
+                    if(videos.length > 0 && added == false) {
+                        addDlBtn(footer);
                     }
                 }
             }
-        });
+        }
     }
 
     var startButton = document.createElement('button');
