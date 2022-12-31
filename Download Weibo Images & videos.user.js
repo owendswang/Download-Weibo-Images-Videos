@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.4
+// @version      0.4.1
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -11,6 +11,7 @@
 // @homepage     https://greasyfork.org/scripts/430877
 // @supportURL   https://github.com/owendswang/Download-Weibo-Images-Videos
 // @grant        GM_download
+// @grant        GM_notification
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @namespace http://tampermonkey.net/
@@ -45,12 +46,21 @@
         text = text_en;
     }
 
-    function httpGet(theUrl)
-    {
+    function httpGet(theUrl) {
         var xmlHttp = new XMLHttpRequest();
         xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
         xmlHttp.send( null );
         return xmlHttp.responseText;
+    }
+
+    function downloadError(e, url) {
+        console.log(e, url);
+        /*GM_notification({
+            title: 'Download error',
+            text: 'Error: ' + e.error + '\nUrl: ' + url,
+            silent: true,
+            timeout: 3,
+        });*/
     }
 
     function addDlBtn(footer) {
@@ -62,13 +72,7 @@
         dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz download-button';
         dlBtn.setAttribute('tabindex', '0');
         dlBtn.setAttribute('title', '下载');
-        dlBtn.innerHTML = '<span class="woo-like-iconWrap">\
-<svg class="woo-like-icon">\
-<use xlink:href="#woo_svg_download">\
-</use>\
-</svg>\
-</span>\
-<span class="woo-like-count">下载</span>';
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
         dlBtn.addEventListener('click', function(event) {
             var article = this.parentElement.parentElement.parentElement.parentElement.parentElement;
             if( article.tagName.toLowerCase() == 'article') {
@@ -76,13 +80,11 @@
                 var header = article.getElementsByTagName('header')[0];
                 var postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
                 var postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                var response = '';
-                var resJson = {};
+                var response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
+                var resJson = JSON.parse(response);
+                // console.log(resJson);
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
-                    console.log('download video');
-                    response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
-                    resJson = JSON.parse(response);
-                    // console.log(resJson);
+                    // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
                         var mediaInfo = resJson.page_info.media_info;
                         var largeVidUrl = mediaInfo.playback_list[0].play_info.url;
@@ -91,14 +93,12 @@
                         GM_download({
                             url: largeVidUrl,
                             name:vidName,
+                            onerror: (e) => { downloadError(e, largeVidUrl); },
                         });
                         // console.log(largeVidUrl);
                     }
                 }
-                console.log('download images');
-                response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
-                resJson = JSON.parse(response);
-                // console.log(resJson);
+                // console.log('download images');
                 var picInfos = [];
                 if(resJson.hasOwnProperty('retweeted_status')) {
                     picInfos = resJson.retweeted_status.pic_infos;
@@ -115,15 +115,18 @@
                             'Referer': 'https://weibo.com/',
                             'Origin': 'https://weibo.com/'
                         },
+                        onerror: (e) => { downloadError(e, largePicUrl); },
                     });
                     // console.log(largePicUrl);
                     if(pic.hasOwnProperty('video')) {
                         var videoUrl = pic.video;
                         var videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
-                        // console.log(videoName);
+                        videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
+                        // console.log(videoUrl, videoName);
                         GM_download({
                             url:videoUrl,
                             name: videoName,
+                            onerror: (e) => { downloadError(e, videoUrl); },
                         });
                     }
                 }
@@ -140,8 +143,7 @@
         var symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
         symbol.id = 'woo_svg_download';
         symbol.setAttribute('viewBox', '0 0 100 100');
-        symbol.innerHTML = '<path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path>\
-<path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path>';
+        symbol.innerHTML = '<path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path><path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path>';
         svg.appendChild(symbol);
 
         var arts = document.getElementsByTagName('article');
