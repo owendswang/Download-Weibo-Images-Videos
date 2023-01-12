@@ -16,9 +16,9 @@ English Version: [README.md](README.md)
 
 ## 使用平台：
 （仅列出了我测试并使用的平台版本。）
-- **Tampermonkey** (测试于v4.13.6136)
-- Firefox (测试于v91.0 64-bit)
-- Windows 7 SP1，Windows 10 20H2 (我测试用的版本)
+- **Tampermonkey** (测试于v4.18.1)
+- Firefox (测试于v108.0.2 64-bit)
+- Windows 7 SP1，Windows 10 22H2 (我测试用的版本)
 
 ## 使用方法:
 从[Greasy Fork](https://greasyfork.org/scripts/430877)直接安装。
@@ -29,7 +29,7 @@ English Version: [README.md](README.md)
 
 ## 使用教程:
 1. 首次打开时，请选择添加下载按钮的方式；\
-![3.jpg](res/3.JPG?raw=true)
+![3.png](res/3.PNG?raw=true)
 2. 如果您选择了点击按钮来添加下载按钮，您将在页面左侧找到添加按钮；\
    如果您想修改添加下载按钮的方式，请点击页面左侧的设置按钮。\
 ![2.jpg](res/2.JPG?raw=true)
