@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.4.1
+// @version      0.5
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -29,7 +29,9 @@
         '点击“添加下载按钮”来添加下载按钮。',
         '当鼠标位于浏览器页面时添加下载按钮，但这种方式会占用很多CPU资源。',
         '确定',
-        '下载设置'
+        '下载设置',
+        '下载文件名称',
+        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀'
     ];
     var text_en = [
         'Add Download Buttons',
@@ -38,7 +40,9 @@
         'Click \'Add Download Buttons\' button to add download buttons.',
         'When mouse over browser page, add download buttons automatically. But it takes a lot of CPU usage.',
         'OK',
-        'Download Setting'
+        'Download Setting',
+        'Download File Name',
+        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention'
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -63,6 +67,17 @@
         });*/
     }
 
+    function getName(originalName, ext, userName, userId, postId, postUid) {
+        var setName = GM_getValue('dlFileName', '{original}.{ext}');
+        setName = setName.replace('{ext}', ext);
+        setName = setName.replace('{original}', originalName);
+        setName = setName.replace('{username}', userName);
+        setName = setName.replace('{userid}', userId);
+        setName = setName.replace('{mblogid}', postId);
+        setName = setName.replace('{uid}', postUid);
+        return setName.replace(/[<>|\|*|"|\/|\|:|?]/g, '_');
+    }
+
     function addDlBtn(footer) {
         var dlBtnDiv = document.createElement('div');
         dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D';
@@ -83,6 +98,21 @@
                 var response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
                 var resJson = JSON.parse(response);
                 // console.log(resJson);
+                var picInfos = [];
+                var userName, userId, postUid;
+                if(resJson.hasOwnProperty('retweeted_status')) {
+                    postId = resJson.retweeted_status.mblogid;
+                    picInfos = resJson.retweeted_status.pic_infos;
+                    userName = resJson.retweeted_status.user.screen_name;
+                    userId = resJson.retweeted_status.user.idstr;
+                    postUid = resJson.retweeted_status.idstr;
+                } else {
+                    postId = resJson.mblogid;
+                    picInfos = resJson.pic_infos;
+                    userName = resJson.user.screen_name;
+                    userId = resJson.user.idstr;
+                    postUid = resJson.idstr;
+                }
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
@@ -90,27 +120,27 @@
                         var largeVidUrl = mediaInfo.playback_list[0].play_info.url;
                         var vidName = largeVidUrl.split('?')[0];
                         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
+                        let originalName = vidName.split('.')[0];
+                        let ext = vidName.split('.')[1];
+                        let setName = getName(originalName, ext, userName, userId, postId, postUid);
                         GM_download({
                             url: largeVidUrl,
-                            name:vidName,
+                            name: setName,
                             onerror: (e) => { downloadError(e, largeVidUrl); },
                         });
                         // console.log(largeVidUrl);
                     }
                 }
                 // console.log('download images');
-                var picInfos = [];
-                if(resJson.hasOwnProperty('retweeted_status')) {
-                    picInfos = resJson.retweeted_status.pic_infos;
-                } else {
-                    picInfos = resJson.pic_infos;
-                }
                 for (const [id, pic] of Object.entries(picInfos)) {
                     var largePicUrl = pic.largest.url;
                     var picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
+                    let originalName = picName.split('.')[0];
+                    let ext = picName.split('.')[1];
+                    let setName = getName(originalName, ext, userName, userId, postId, postUid);
                     GM_download({
                         url:largePicUrl,
-                        name: picName,
+                        name: setName,
                         headers: {
                             'Referer': 'https://weibo.com/',
                             'Origin': 'https://weibo.com/'
@@ -123,9 +153,12 @@
                         var videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
                         videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
                         // console.log(videoUrl, videoName);
+                        let originalName = videoName.split('.')[0];
+                        let ext = videoName.split('.')[1];
+                        let setName = getName(originalName, ext, userName, userId, postId, postUid);
                         GM_download({
                             url:videoUrl,
-                            name: videoName,
+                            name: setName,
                             onerror: (e) => { downloadError(e, videoUrl); },
                         });
                     }
@@ -242,7 +275,7 @@
         document.body.appendChild(bg);
         modal.style.position = 'fixed';
         modal.style.width = '25rem';
-        modal.style.height = '20rem';
+        modal.style.height = 'auto';
         modal.style.zIndex = 600;
         modal.style.backgroundColor = 'white';
         modal.style.borderStyle = 'solid';
@@ -266,6 +299,8 @@
         question.textContent = text[2];
         question.style.paddingLeft = '2rem';
         question.style.paddingRight = '2rem';
+        question.style.marginTop = '1rem';
+        question.style.marginBottom = '0.5rem';
         modal.appendChild(question);
         var chooseButton = document.createElement('input');
         chooseButton.type = 'radio';
@@ -300,6 +335,31 @@
         divForChooseEvent.appendChild(chooseEvent);
         divForChooseEvent.appendChild(labelForChooseEvent);
         modal.appendChild(divForChooseEvent);
+        var question2 = document.createElement('p');
+        question2.textContent = text[7];
+        question2.style.paddingLeft = '2rem';
+        question2.style.paddingRight = '2rem';
+        question2.style.marginTop = '1rem';
+        question2.style.marginBottom = '0.5rem';
+        modal.appendChild(question2);
+        var inputFileName = document.createElement('input');
+        inputFileName.type = 'text';
+        inputFileName.id = 'dlFileName';
+        inputFileName.name = 'dlFileName';
+        inputFileName.style.marginLeft = '2rem';
+        inputFileName.style.marginRight = '2rem';
+        inputFileName.style.width = 'calc(100% - 5rem)';
+        inputFileName.defaultValue = GM_getValue('dlFileName', '{original}.{ext}');
+        modal.appendChild(inputFileName);
+        var fileNameExplain = document.createElement('p');
+        fileNameExplain.textContent = text[8];
+        fileNameExplain.style.paddingLeft = '2rem';
+        fileNameExplain.style.paddingRight = '2rem';
+        fileNameExplain.style.marginTop = '0.5rem';
+        fileNameExplain.style.marginBottom = '0';
+        fileNameExplain.style.whiteSpace = 'pre';
+        fileNameExplain.style.color = 'gray';
+        modal.appendChild(fileNameExplain);
         var okButton = document.createElement('button');
         okButton.textContent = text[5];
         okButton.style.paddingTop = '0.5rem';
@@ -343,6 +403,7 @@
                 addDlBtnMode = 2;
                 addEventListener();
             }
+            GM_setValue('dlFileName', document.getElementById('dlFileName').value);
             document.body.removeChild(modal);
             document.body.removeChild(bg);
             window.removeEventListener('resize', resizeWindow);
