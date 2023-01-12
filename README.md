@@ -18,9 +18,9 @@ Or
 
 ## Platform:
 (Only listed those versions I tested. You could try it on other platforms by yourself.)
-- **Tampermonkey** (tested on v4.13.6136)
-- Firefox (tested on v91.0 64-bit)
-- Windows 7 SP1, Windows 10 20H2 (which I tested on)
+- **Tampermonkey** (tested on v4.18.1)
+- Firefox (tested on v108.0.2 64-bit)
+- Windows 7 SP1, Windows 10 22H2 (which I tested on)
 
 ## Usage:
 Install from [Greasy Fork](https://greasyfork.org/scripts/430877).
@@ -31,7 +31,7 @@ Or Install manually:
 
 ## Tutorial:
 1. First time, this setting would show up. Choose any one you like.\
-![3.jpg](res/3.JPG?raw=true)
+![3.png](res/3.PNG?raw=true)
 2. If you choose click a button to add download buttons, you would find that button on the left of the page.\
    If you would like to change the way to add download buttons, just click the setting button on the left of the page.\
 ![2.jpg](res/2.JPG?raw=true)
