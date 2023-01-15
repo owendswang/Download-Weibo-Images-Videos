@@ -7,6 +7,7 @@ A Tampermonkey script to download weibo images and videos.
 - Support downloading live photos (only if add '.mov' to the download whitelist in Tampermonkey's advance setting)
 - Support downloading images and videos
 - Customize download files' name
+- Support on 's.weibo.com'
 
 ## Screenshot:
 ![1.jpg](res/1.JPG?raw=true)
