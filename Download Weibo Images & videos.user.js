@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.5.1
+// @version      0.6
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
 // @match        https://weibo.com/*
+// @match        https://s.weibo.com/weibo*
+// @match        https://s.weibo.com/realtime*
+// @match        https://s.weibo.com/video*
 // @icon         https://weibo.com/favicon.ico
 // @license      MIT
 // @homepage     https://greasyfork.org/scripts/430877
@@ -21,8 +24,8 @@
 (function() {
     'use strict';
 
-    var text = [];
-    var text_zh = [
+    let text = [];
+    let text_zh = [
         '添加下载按钮',
         '欢迎使用“下载微博图片”脚本',
         '请选择添加下载按钮的方式：',
@@ -33,7 +36,7 @@
         '下载文件名称',
         '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号'
     ];
-    var text_en = [
+    let text_en = [
         'Add Download Buttons',
         'Welcome Using \'Download Weibo Images\' Script',
         'Which way do you like to add download buttons to each weibo post?',
@@ -51,7 +54,7 @@
     }
 
     function httpGet(theUrl) {
-        var xmlHttp = new XMLHttpRequest();
+        let xmlHttp = new XMLHttpRequest();
         xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
         xmlHttp.send( null );
         return xmlHttp.responseText;
@@ -68,7 +71,7 @@
     }
 
     function getName(originalName, ext, userName, userId, postId, postUid,index) {
-        var setName = GM_getValue('dlFileName', '{original}.{ext}');
+        let setName = GM_getValue('dlFileName', '{original}.{ext}');
         setName = setName.replace('{ext}', ext);
         setName = setName.replace('{original}', originalName);
         setName = setName.replace('{username}', userName);
@@ -80,27 +83,28 @@
     }
 
     function addDlBtn(footer) {
-        var dlBtnDiv = document.createElement('div');
+        let dlBtnDiv = document.createElement('div');
         dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D';
-        var divInDiv = document.createElement('div');
+        let divInDiv = document.createElement('div');
         divInDiv.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_likebox_1rLfZ';
-        var dlBtn = document.createElement('button');
+        let dlBtn = document.createElement('button');
         dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz download-button';
         dlBtn.setAttribute('tabindex', '0');
         dlBtn.setAttribute('title', '下载');
         dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
         dlBtn.addEventListener('click', function(event) {
-            var article = this.parentElement.parentElement.parentElement.parentElement.parentElement;
+            event.preventDefault();
+            const article = this.parentElement.parentElement.parentElement.parentElement.parentElement;
             if( article.tagName.toLowerCase() == 'article') {
-                var contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
-                var header = article.getElementsByTagName('header')[0];
-                var postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
-                var postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                var response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
-                var resJson = JSON.parse(response);
+                // let contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
+                const header = article.getElementsByTagName('header')[0];
+                const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
+                let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
+                const response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
+                const resJson = JSON.parse(response);
                 // console.log(resJson);
-                var picInfos = [];
-                var userName, userId, postUid;
+                let picInfos = [];
+                let userName, userId, postUid;
                 if(resJson.hasOwnProperty('retweeted_status')) {
                     postId = resJson.retweeted_status.mblogid;
                     picInfos = resJson.retweeted_status.pic_infos;
@@ -117,9 +121,9 @@
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
-                        var mediaInfo = resJson.page_info.media_info;
-                        var largeVidUrl = mediaInfo.playback_list[0].play_info.url;
-                        var vidName = largeVidUrl.split('?')[0];
+                        let mediaInfo = resJson.page_info.media_info;
+                        let largeVidUrl = mediaInfo.playback_list[0].play_info.url;
+                        let vidName = largeVidUrl.split('?')[0];
                         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
@@ -137,8 +141,8 @@
                 let padLength = Object.entries(picInfos).length.toString().length;
                 for (const [id, pic] of Object.entries(picInfos)) {
                     index += 1;
-                    var largePicUrl = pic.largest.url;
-                    var picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
+                    let largePicUrl = pic.largest.url;
+                    let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
                     let originalName = picName.split('.')[0];
                     let ext = picName.split('.')[1];
                     let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
@@ -153,8 +157,8 @@
                     });
                     // console.log(largePicUrl);
                     if(pic.hasOwnProperty('video')) {
-                        var videoUrl = pic.video;
-                        var videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
+                        let videoUrl = pic.video;
+                        let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
                         videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
                         // console.log(videoUrl, videoName);
                         let originalName = videoName.split('.')[0];
@@ -175,48 +179,182 @@
         // console.log('added download button');
     }
 
+    function sAddDlBtn(footer) {
+        const lis = footer.getElementsByTagName('li');
+        for (const li of lis) {
+            li.style.width = '25%';
+        }
+        let dlBtnLi = document.createElement('li');
+        dlBtnLi.style.width = '25%';
+        let aInLi = document.createElement('a');
+        aInLi.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter';
+        aInLi.setAttribute('title', '下载');
+        aInLi.setAttribute('href', 'javascript:void(0);');
+        let dlBtn = document.createElement('button');
+        dlBtn.className = 'woo-like-main toolbar_btn download-button';
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
+        aInLi.addEventListener('click', function(event) { event.preventDefault(); });
+        dlBtn.addEventListener('click', function(event) {
+            // console.log('download');
+            event.preventDefault();
+            const card = this.parentElement.parentElement.parentElement.parentElement;
+            const cardWrap = card.parentElement;
+            // console.log(card, cardWrap);
+            const mid = cardWrap.getAttribute('mid');
+            // console.log(mid);
+            if(mid) {
+                const response = httpGet('https://weibo.com/ajax/statuses/show?id=' + mid);
+                const resJson = JSON.parse(response);
+                // console.log(resJson);
+                let picInfos = [];
+                let userName, userId, postUid, postId;
+                if(resJson.hasOwnProperty('retweeted_status')) {
+                    postId = resJson.retweeted_status.mblogid;
+                    picInfos = resJson.retweeted_status.pic_infos;
+                    userName = resJson.retweeted_status.user.screen_name;
+                    userId = resJson.retweeted_status.user.idstr;
+                    postUid = resJson.retweeted_status.idstr;
+                } else {
+                    postId = resJson.mblogid;
+                    picInfos = resJson.pic_infos;
+                    userName = resJson.user.screen_name;
+                    userId = resJson.user.idstr;
+                    postUid = resJson.idstr;
+                }
+                if(footer.parentElement.getElementsByTagName('video').length > 0) {
+                    // console.log('download video');
+                    if(resJson.hasOwnProperty('page_info')) {
+                        let mediaInfo = resJson.page_info.media_info;
+                        let largeVidUrl = mediaInfo.playback_list[0].play_info.url;
+                        let vidName = largeVidUrl.split('?')[0];
+                        vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
+                        let originalName = vidName.split('.')[0];
+                        let ext = vidName.split('.')[1];
+                        let setName = getName(originalName, ext, userName, userId, postId, postUid, 1);
+                        GM_download({
+                            url: largeVidUrl,
+                            name: setName,
+                            onerror: (e) => { downloadError(e, largeVidUrl); },
+                        });
+                        // console.log(largeVidUrl);
+                    }
+                }
+                // console.log('download images');
+                let index = 0;
+                let padLength = Object.entries(picInfos).length.toString().length;
+                for (const [id, pic] of Object.entries(picInfos)) {
+                    index += 1;
+                    let largePicUrl = pic.largest.url;
+                    let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
+                    let originalName = picName.split('.')[0];
+                    let ext = picName.split('.')[1];
+                    let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
+                    GM_download({
+                        url:largePicUrl,
+                        name: setName,
+                        headers: {
+                            'Referer': 'https://weibo.com/',
+                            'Origin': 'https://weibo.com/'
+                        },
+                        onerror: (e) => { downloadError(e, largePicUrl); },
+                    });
+                    // console.log(largePicUrl);
+                    if(pic.hasOwnProperty('video')) {
+                        let videoUrl = pic.video;
+                        let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
+                        videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
+                        // console.log(videoUrl, videoName);
+                        let originalName = videoName.split('.')[0];
+                        let ext = videoName.split('.')[1];
+                        let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
+                        GM_download({
+                            url:videoUrl,
+                            name: setName,
+                            onerror: (e) => { downloadError(e, videoUrl); },
+                        });
+                    }
+                }
+            }
+        });
+        aInLi.appendChild(dlBtn);
+        dlBtnLi.appendChild(dlBtn);
+        footer.firstChild.appendChild(dlBtnLi);
+        // console.log('added download button');
+    }
+
     function bodyMouseOver(event) {
-        var svg = document.getElementById('__SVG_SPRITE_NODE__');
-        var symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+        let svg = document.getElementById('__SVG_SPRITE_NODE__');
+        let symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
         symbol.id = 'woo_svg_download';
         symbol.setAttribute('viewBox', '0 0 100 100');
         symbol.innerHTML = '<path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path><path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path>';
         svg.appendChild(symbol);
 
-        var arts = document.getElementsByTagName('article');
-        var footers = document.getElementsByTagName('footer');
-        for (const footer of footers) {
-            if(footer.getElementsByClassName('download-button').length > 0) {
-                // console.log('already added download button');
-            } else {
-                // console.log(footer.parentElement);
-                if(footer.parentElement.tagName.toLowerCase() == 'article') {
-                    const article = footer.parentElement;
-                    const imgs = article.getElementsByTagName('img');
-                    var added = false;
-                    // console.log(imgs);
-                    if(imgs.length > 0) {
-                        var addFlag = false;
-                        for (const img of imgs) {
-                            if(['woo-picture-img', 'picture_focusImg_1z5In'].includes(img.className)) {
-                                addFlag = true;
+        if (location.host == 'weibo.com') {
+            // let arts = document.getElementsByTagName('article');
+            const footers = document.getElementsByTagName('footer');
+            for (const footer of footers) {
+                if(footer.getElementsByClassName('download-button').length > 0) {
+                    // console.log('already added download button');
+                } else {
+                    // console.log(footer.parentElement);
+                    if(footer.parentElement.tagName.toLowerCase() == 'article') {
+                        const article = footer.parentElement;
+                        const imgs = article.getElementsByTagName('img');
+                        let added = false;
+                        // console.log(imgs);
+                        if(imgs.length > 0) {
+                            let addFlag = false;
+                            for (const img of imgs) {
+                                if(['woo-picture-img', 'picture_focusImg_1z5In'].includes(img.className)) {
+                                    addFlag = true;
+                                }
+                            }
+                            if(addFlag == true) {
+                                addDlBtn(footer);
+                                added = true;
                             }
                         }
-                        if(addFlag == true) {
+                        let videos = article.getElementsByTagName('video');
+                        if(videos.length > 0 && added == false) {
                             addDlBtn(footer);
-                            added = true;
                         }
                     }
-                    var videos = article.getElementsByTagName('video');
-                    if(videos.length > 0 && added == false) {
-                        addDlBtn(footer);
+                }
+            }
+        }
+        if (location.host == 's.weibo.com') {
+            // let cards = document.querySelectorAll('#pl_feedlist_index .card-wrap');
+            const footers = document.querySelectorAll('#pl_feedlist_index .card-act');
+            for (const footer of footers) {
+                if(footer.getElementsByClassName('download-button').length > 0) {
+                    // console.log('already added download button');
+                } else {
+                    // console.log(footer.parentElement);
+                    if(footer.parentElement.className == 'card' && footer.parentElement.parentElement.className == 'card-wrap') {
+                        const card = footer.parentElement;
+                        let added = false;
+                        const media_prev = card.querySelector('div[node-type="feed_list_media_prev"]');
+                        // console.log(media_prev);
+                        if (media_prev) {
+                            const imgs = media_prev.getElementsByTagName('img');
+                            // console.log(imgs);
+                            if(imgs.length > 0) {
+                                sAddDlBtn(footer);
+                                added = true;
+                            }
+                            const videos = card.getElementsByTagName('video');
+                            if(videos.length > 0 && added == false) {
+                                sAddDlBtn(footer);
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    var startButton = document.createElement('button');
+    let startButton = document.createElement('button');
     startButton.textContent = text[0];
     startButton.id = 'startButton';
     startButton.style.position = 'fixed';
@@ -230,7 +368,7 @@
     startButton.style.paddingTop = '0.5rem';
     startButton.style.paddingBottom = '0.5rem';
     startButton.style.fontWeight = 'bold';
-    startButton.style.borderSize = '0.2rem';
+    startButton.style.borderWidth = '0.15rem';
     startButton.style.borderColor = 'lightgray';
     startButton.style.borderRadius = '0.4rem';
     startButton.style.borderStyle = 'solid';
@@ -264,18 +402,18 @@
         }
     }
 
-    var addDlBtnMode = GM_getValue('addDlBtnMode', 0);
+    let addDlBtnMode = GM_getValue('addDlBtnMode', 0);
 
     function showModal(event) {
         // console.log(addDlBtnMode);
-        var bg = document.createElement('div');
+        let bg = document.createElement('div');
         bg.style.position = 'fixed';
         bg.style.top = 0;
         bg.style.left = 0;
         bg.style.zIndex = 500;
         bg.style.backgroundColor = 'black';
         bg.style.opacity = 0.5;
-        var modal = document.createElement('div');
+        let modal = document.createElement('div');
         document.body.appendChild(bg);
         modal.style.position = 'fixed';
         modal.style.width = '25rem';
@@ -286,7 +424,7 @@
         modal.style.borderWidth = '0.2rem';
         modal.style.borderRadius = '0.5rem';
         modal.style.borderColor = 'black';
-        var titleBar = document.createElement('div');
+        let titleBar = document.createElement('div');
         titleBar.textContent = text[1];
         titleBar.style.width = '100%';
         titleBar.style.textAlign = 'center';
@@ -299,28 +437,28 @@
         titleBar.style.borderTopLeftRadius = '0.3rem';
         titleBar.style.borderTopRightRadius = '0.3rem';
         modal.appendChild(titleBar);
-        var question = document.createElement('p');
+        let question = document.createElement('p');
         question.textContent = text[2];
         question.style.paddingLeft = '2rem';
         question.style.paddingRight = '2rem';
         question.style.marginTop = '1rem';
         question.style.marginBottom = '0.5rem';
         modal.appendChild(question);
-        var chooseButton = document.createElement('input');
+        let chooseButton = document.createElement('input');
         chooseButton.type = 'radio';
         chooseButton.id = 'chooseButton';
         chooseButton.name = 'chooseSetting';
         chooseButton.value = 1;
-        var labelForChooseButton = document.createElement('label');
+        let labelForChooseButton = document.createElement('label');
         labelForChooseButton.htmlFor = 'chooseButton';
         labelForChooseButton.textContent = text[3];
-        var divForChooseButton = document.createElement('div');
+        let divForChooseButton = document.createElement('div');
         divForChooseButton.style.paddingLeft = '2rem';
         divForChooseButton.style.paddingRight = '2rem';
         divForChooseButton.appendChild(chooseButton);
         divForChooseButton.appendChild(labelForChooseButton);
         modal.appendChild(divForChooseButton);
-        var chooseEvent = document.createElement('input');
+        let chooseEvent = document.createElement('input');
         chooseEvent.type = 'radio';
         chooseEvent.id = 'chooseEvent';
         chooseEvent.name = 'chooseSetting';
@@ -330,23 +468,23 @@
         } else {
             chooseButton.checked = true;
         }
-        var labelForChooseEvent = document.createElement('label');
+        let labelForChooseEvent = document.createElement('label');
         labelForChooseEvent.htmlFor = 'chooseEvent';
         labelForChooseEvent.textContent = text[4];
-        var divForChooseEvent = document.createElement('div');
+        let divForChooseEvent = document.createElement('div');
         divForChooseEvent.style.paddingLeft = '2rem';
         divForChooseEvent.style.paddingRight = '2rem';
         divForChooseEvent.appendChild(chooseEvent);
         divForChooseEvent.appendChild(labelForChooseEvent);
         modal.appendChild(divForChooseEvent);
-        var question2 = document.createElement('p');
+        let question2 = document.createElement('p');
         question2.textContent = text[7];
         question2.style.paddingLeft = '2rem';
         question2.style.paddingRight = '2rem';
         question2.style.marginTop = '1rem';
         question2.style.marginBottom = '0.5rem';
         modal.appendChild(question2);
-        var inputFileName = document.createElement('input');
+        let inputFileName = document.createElement('input');
         inputFileName.type = 'text';
         inputFileName.id = 'dlFileName';
         inputFileName.name = 'dlFileName';
@@ -355,7 +493,7 @@
         inputFileName.style.width = 'calc(100% - 5rem)';
         inputFileName.defaultValue = GM_getValue('dlFileName', '{original}.{ext}');
         modal.appendChild(inputFileName);
-        var fileNameExplain = document.createElement('p');
+        let fileNameExplain = document.createElement('p');
         fileNameExplain.textContent = text[8];
         fileNameExplain.style.paddingLeft = '2rem';
         fileNameExplain.style.paddingRight = '2rem';
@@ -364,7 +502,7 @@
         fileNameExplain.style.whiteSpace = 'pre';
         fileNameExplain.style.color = 'gray';
         modal.appendChild(fileNameExplain);
-        var okButton = document.createElement('button');
+        let okButton = document.createElement('button');
         okButton.textContent = text[5];
         okButton.style.paddingTop = '0.5rem';
         okButton.style.paddingBottom = '0.5rem';
@@ -431,7 +569,7 @@
         addEventListener();
     }
 
-    var settingButton = document.createElement('button');
+    let settingButton = document.createElement('button');
     settingButton.textContent = text[6];
     settingButton.style.position = 'fixed';
     settingButton.style.top = '4rem';
