@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.5
+// @version      0.5.1
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -31,7 +31,7 @@
         '确定',
         '下载设置',
         '下载文件名称',
-        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀'
+        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号'
     ];
     var text_en = [
         'Add Download Buttons',
@@ -42,7 +42,7 @@
         'OK',
         'Download Setting',
         'Download File Name',
-        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention'
+        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention\n{index} - Image index'
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -67,7 +67,7 @@
         });*/
     }
 
-    function getName(originalName, ext, userName, userId, postId, postUid) {
+    function getName(originalName, ext, userName, userId, postId, postUid,index) {
         var setName = GM_getValue('dlFileName', '{original}.{ext}');
         setName = setName.replace('{ext}', ext);
         setName = setName.replace('{original}', originalName);
@@ -75,6 +75,7 @@
         setName = setName.replace('{userid}', userId);
         setName = setName.replace('{mblogid}', postId);
         setName = setName.replace('{uid}', postUid);
+        setName = setName.replace('{index}', index);
         return setName.replace(/[<>|\|*|"|\/|\|:|?]/g, '_');
     }
 
@@ -122,7 +123,7 @@
                         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
-                        let setName = getName(originalName, ext, userName, userId, postId, postUid);
+                        let setName = getName(originalName, ext, userName, userId, postId, postUid, 1);
                         GM_download({
                             url: largeVidUrl,
                             name: setName,
@@ -132,12 +133,15 @@
                     }
                 }
                 // console.log('download images');
+                let index = 0;
+                let padLength = Object.entries(picInfos).length.toString().length;
                 for (const [id, pic] of Object.entries(picInfos)) {
+                    index += 1;
                     var largePicUrl = pic.largest.url;
                     var picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
                     let originalName = picName.split('.')[0];
                     let ext = picName.split('.')[1];
-                    let setName = getName(originalName, ext, userName, userId, postId, postUid);
+                    let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
                     GM_download({
                         url:largePicUrl,
                         name: setName,
@@ -155,7 +159,7 @@
                         // console.log(videoUrl, videoName);
                         let originalName = videoName.split('.')[0];
                         let ext = videoName.split('.')[1];
-                        let setName = getName(originalName, ext, userName, userId, postId, postUid);
+                        let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
                         GM_download({
                             url:videoUrl,
                             name: setName,
