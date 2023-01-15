@@ -7,6 +7,7 @@ English Version: [README.md](README.md)
 - 支持下载live photo（前提是必须在Tampermonkey的高级设置中，将“mov”后缀添加到下载白名单里）
 - 支持下载图片和视频
 - 自定义下载文件名称
+- 支持搜索页面“s.weibo.com”
 
 ## 页面截图：
 ![1.jpg](res/1.JPG?raw=true)
