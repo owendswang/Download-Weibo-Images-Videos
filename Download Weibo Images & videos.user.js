@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.6.1
+// @version      0.6.2
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -36,7 +36,7 @@
         '确定',
         '下载设置',
         '下载文件名称',
-        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号'
+        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用'
     ];
     let text_en = [
         'Add Download Buttons',
@@ -47,7 +47,7 @@
         'OK',
         'Download Setting',
         'Download File Name',
-        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention\n{index} - Image index'
+        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post'
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -72,7 +72,7 @@
         });*/
     }
 
-    function getName(originalName, ext, userName, userId, postId, postUid,index) {
+    function getName(originalName, ext, userName, userId, postId, postUid, index, postTime) {
         let setName = GM_getValue('dlFileName', '{original}.{ext}');
         setName = setName.replace('{ext}', ext);
         setName = setName.replace('{original}', originalName);
@@ -81,6 +81,22 @@
         setName = setName.replace('{mblogid}', postId);
         setName = setName.replace('{uid}', postUid);
         setName = setName.replace('{index}', index);
+        let YYYY, MM, DD, HH, mm, ss;
+        const postAt = new Date(postTime);
+        if (postTime) {
+            YYYY = postAt.getFullYear().toString();
+            MM = (postAt.getMonth() + 1).toString().padStart(2, '0');
+            DD = postAt.getDate().toString().padStart(2, '0');
+            HH = postAt.getHours().toString().padStart(2, '0');
+            mm = postAt.getMinutes().toString().padStart(2, '0');
+            ss = postAt.getSeconds().toString().padStart(2, '0');
+        }
+        setName = setName.replace('{YYYY}', YYYY);
+        setName = setName.replace('{MM}', MM);
+        setName = setName.replace('{DD}', DD);
+        setName = setName.replace('{HH}', HH);
+        setName = setName.replace('{mm}', mm);
+        setName = setName.replace('{ss}', ss);
         return setName.replace(/[<>|\|*|"|\/|\|:|?]/g, '_');
     }
 
@@ -106,19 +122,21 @@
                 const resJson = JSON.parse(response);
                 // console.log(resJson);
                 let picInfos = [];
-                let userName, userId, postUid;
+                let userName, userId, postUid, postTime;
                 if(resJson.hasOwnProperty('retweeted_status')) {
                     postId = resJson.retweeted_status.mblogid;
                     picInfos = resJson.retweeted_status.pic_infos;
                     userName = resJson.retweeted_status.user.screen_name;
                     userId = resJson.retweeted_status.user.idstr;
                     postUid = resJson.retweeted_status.idstr;
+                    postTime = resJson.retweeted_status.created_at;
                 } else {
                     postId = resJson.mblogid;
                     picInfos = resJson.pic_infos;
                     userName = resJson.user.screen_name;
                     userId = resJson.user.idstr;
                     postUid = resJson.idstr;
+                    postTime = resJson.created_at;
                 }
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
@@ -129,7 +147,7 @@
                         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
-                        let setName = getName(originalName, ext, userName, userId, postId, postUid, 1);
+                        let setName = getName(originalName, ext, userName, userId, postId, postUid, 1, postTime);
                         GM_download({
                             url: largeVidUrl,
                             name: setName,
@@ -147,7 +165,7 @@
                     let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
                     let originalName = picName.split('.')[0];
                     let ext = picName.split('.')[1];
-                    let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
+                    let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
                     GM_download({
                         url:largePicUrl,
                         name: setName,
@@ -165,7 +183,7 @@
                         // console.log(videoUrl, videoName);
                         let originalName = videoName.split('.')[0];
                         let ext = videoName.split('.')[1];
-                        let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
+                        let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
                         GM_download({
                             url:videoUrl,
                             name: setName,
