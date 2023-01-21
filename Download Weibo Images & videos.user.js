@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.6.2
+// @version      0.6.3
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
-// @match        https://weibo.com
+// @match        https://weibo.com/*
 // @match        https://s.weibo.com/weibo*
 // @match        https://s.weibo.com/realtime*
 // @match        https://s.weibo.com/video*
