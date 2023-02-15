@@ -19,7 +19,6 @@
 // @grant        GM_notification
 // @grant        GM_getValue
 // @grant        GM_setValue
-// @grant        GM_info
 // @namespace http://tampermonkey.net/
 // @run-at       document-end
 // ==/UserScript==
