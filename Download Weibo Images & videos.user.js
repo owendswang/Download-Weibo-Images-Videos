@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.6.3
+// @version      0.7
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -19,6 +19,7 @@
 // @grant        GM_notification
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_info
 // @namespace http://tampermonkey.net/
 // @run-at       document-end
 // ==/UserScript==
@@ -36,7 +37,8 @@
         '确定',
         '下载设置',
         '下载文件名称',
-        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用'
+        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用',
+        '下载队列',
     ];
     let text_en = [
         'Add Download Buttons',
@@ -47,7 +49,8 @@
         'OK',
         'Download Setting',
         'Download File Name',
-        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post'
+        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post',
+        'Download Queue',
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -62,7 +65,7 @@
         return xmlHttp.responseText;
     }
 
-    function downloadError(e, url) {
+    function downloadError(e, url, progress) {
         console.log(e, url);
         /*GM_notification({
             title: 'Download error',
@@ -70,6 +73,65 @@
             silent: true,
             timeout: 3,
         });*/
+        progress.style.background = 'red';
+        setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000);
+    }
+
+    let downloadQueueCard = document.createElement('div');
+    downloadQueueCard.style.position = 'fixed';
+    downloadQueueCard.style.bottom = '0.5rem';
+    downloadQueueCard.style.left = '0.5rem';
+    downloadQueueCard.style.maxHeight = '50vh';
+    downloadQueueCard.style.overflowY = 'auto';
+    let downloadQueueTitle = document.createElement('div');
+    downloadQueueTitle.textContent = text[9];
+    downloadQueueTitle.style.fontSize = '0.8rem';
+    downloadQueueTitle.style.color = 'gray';
+    downloadQueueTitle.style.display = 'none';
+    downloadQueueCard.appendChild(downloadQueueTitle);
+    document.body.appendChild(downloadQueueCard);
+    let progressBar = document.createElement('div');
+    progressBar.style.height = '1.4rem';
+    progressBar.style.width = '23rem';
+    // progressBar.style.background = 'linear-gradient(to right, green 60%, transparent 60%)';
+    progressBar.style.borderStyle = 'solid';
+    progressBar.style.borderWidth = '0.1rem';
+    progressBar.style.borderColor = 'grey';
+    progressBar.style.borderRadius = '0.5rem';
+    progressBar.style.boxSizing = 'content-box';
+    progressBar.style.marginTop = '0.5rem';
+    let progressText = document.createElement('div');
+    progressText.style.mixBlendMode = 'screen';
+    progressText.style.width = '100%';
+    progressText.style.textAlign = 'center';
+    progressText.style.color = 'orange';
+    progressText.style.fontSize = '0.7rem';
+    progressText.style.lineHeight = '1.4rem';
+    progressText.style.overflow = 'hidden';
+    progressBar.appendChild(progressText);
+    // downloadQueueCard.appendChild(progressBar);
+
+    function downloadWrapper(url, name, headerFlag = false) {
+        // console.log(url);
+        let progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
+        downloadQueueTitle.style.display = 'block';
+        GM_download({
+            url,
+            name,
+            headers: headerFlag ? {
+                'Referer': 'https://weibo.com/',
+                'Origin': 'https://weibo.com/'
+            } : null,
+            onprogress: (e) => {
+                // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
+                const percent = e.done / e.total * 100;
+                progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
+                progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
+            },
+            onload: (e) => { setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000); },
+            onerror: (e) => { downloadError(e, url, progress); },
+            ontimeout: (e) => { downloadError(e, url, progress); },
+        });
     }
 
     function getName(originalName, ext, userName, userId, postId, postUid, index, postTime) {
@@ -148,12 +210,7 @@
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
                         let setName = getName(originalName, ext, userName, userId, postId, postUid, 1, postTime);
-                        GM_download({
-                            url: largeVidUrl,
-                            name: setName,
-                            onerror: (e) => { downloadError(e, largeVidUrl); },
-                        });
-                        // console.log(largeVidUrl);
+                        downloadWrapper(largeVidUrl, setName);
                     }
                 }
                 // console.log('download images');
@@ -166,16 +223,7 @@
                     let originalName = picName.split('.')[0];
                     let ext = picName.split('.')[1];
                     let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
-                    GM_download({
-                        url:largePicUrl,
-                        name: setName,
-                        headers: {
-                            'Referer': 'https://weibo.com/',
-                            'Origin': 'https://weibo.com/'
-                        },
-                        onerror: (e) => { downloadError(e, largePicUrl); },
-                    });
-                    // console.log(largePicUrl);
+                    downloadWrapper(largePicUrl, setName, true);
                     if(pic.hasOwnProperty('video')) {
                         let videoUrl = pic.video;
                         let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
@@ -184,11 +232,7 @@
                         let originalName = videoName.split('.')[0];
                         let ext = videoName.split('.')[1];
                         let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
-                        GM_download({
-                            url:videoUrl,
-                            name: setName,
-                            onerror: (e) => { downloadError(e, videoUrl); },
-                        });
+                        downloadWrapper(videoUrl, setName);
                     }
                 }
             }
@@ -251,12 +295,7 @@
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
                         let setName = getName(originalName, ext, userName, userId, postId, postUid, 1);
-                        GM_download({
-                            url: largeVidUrl,
-                            name: setName,
-                            onerror: (e) => { downloadError(e, largeVidUrl); },
-                        });
-                        // console.log(largeVidUrl);
+                        downloadWrapper(largeVidUrl, setName);
                     }
                 }
                 // console.log('download images');
@@ -269,16 +308,7 @@
                     let originalName = picName.split('.')[0];
                     let ext = picName.split('.')[1];
                     let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
-                    GM_download({
-                        url:largePicUrl,
-                        name: setName,
-                        headers: {
-                            'Referer': 'https://weibo.com/',
-                            'Origin': 'https://weibo.com/'
-                        },
-                        onerror: (e) => { downloadError(e, largePicUrl); },
-                    });
-                    // console.log(largePicUrl);
+                    downloadWrapper(largePicUrl, setName, true);
                     if(pic.hasOwnProperty('video')) {
                         let videoUrl = pic.video;
                         let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
@@ -287,11 +317,7 @@
                         let originalName = videoName.split('.')[0];
                         let ext = videoName.split('.')[1];
                         let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
-                        GM_download({
-                            url:videoUrl,
-                            name: setName,
-                            onerror: (e) => { downloadError(e, videoUrl); },
-                        });
+                        downloadWrapper(videoUrl, setName);
                     }
                 }
             }
