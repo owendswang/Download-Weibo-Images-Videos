@@ -35,6 +35,6 @@ English Version: [README.md](README.md)
 2. 如果您选择了点击按钮来添加下载按钮，您将在页面左侧找到添加按钮；\
    如果您想修改添加下载按钮的方式，请点击页面左侧的设置按钮。\
    ![2.jpg](res/2.JPG?raw=true)
-3. Tampermonkey高级设置，添加mov到下载白名单方法：
+3. Tampermonkey高级设置，下载模式选择“原生”，添加mov到下载白名单方法：\
    ![4.png](res/4.png?raw=true)
    ![5.png](res/5.png?raw=true)
