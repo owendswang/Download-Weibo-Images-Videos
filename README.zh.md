@@ -8,6 +8,7 @@ English Version: [README.md](README.md)
 - 支持下载图片和视频
 - 自定义下载文件名称
 - 支持搜索页面“s.weibo.com”
+- 页面右下角显示下载进度和队列
 
 ## 页面截图：
 ![1.jpg](res/1.JPG?raw=true)
