@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.7
+// @version      0.7.1
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -38,6 +38,9 @@
         '下载文件名称',
         '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用',
         '下载队列',
+        '重试',
+        '关闭',
+        '取消',
     ];
     let text_en = [
         'Add Download Buttons',
@@ -50,6 +53,9 @@
         'Download File Name',
         '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post',
         'Download Queue',
+        'Retry',
+        'Close',
+        'Cancel',
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -64,7 +70,7 @@
         return xmlHttp.responseText;
     }
 
-    function downloadError(e, url, progress) {
+    function downloadError(e, url, name, headerFlag, progress) {
         console.log(e, url);
         /*GM_notification({
             title: 'Download error',
@@ -73,7 +79,46 @@
             timeout: 3,
         });*/
         progress.style.background = 'red';
-        setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000);
+        progress.firstChild.textContent = name + ' [' + (e.error || 'Unknown') + ']';
+        progress.firstChild.style.color = 'yellow';
+        progress.firstChild.style.mixBlendMode = 'unset';
+        let progressRetryBtn = document.createElement('button');
+        progressRetryBtn.style.border = 'unset';
+        progressRetryBtn.style.background = 'unset';
+        progressRetryBtn.style.color = 'yellow';
+        progressRetryBtn.style.position = 'absolute';
+        progressRetryBtn.style.right = '1.2rem';
+        progressRetryBtn.style.top = '0.05rem';
+        progressRetryBtn.style.fontSize = '1rem';
+        progressRetryBtn.style.lineHeight = '1rem';
+        progressRetryBtn.style.cursor = 'pointer';
+        progressRetryBtn.style.letterSpacing = '-0.2rem';
+        progressRetryBtn.textContent = '⤤⤦';
+        progressRetryBtn.title = text[10];
+        progressRetryBtn.onmouseover = function(e){
+            this.style.color = 'white';
+        }
+        progressRetryBtn.onmouseout = function(e){
+            this.style.color = 'yellow';
+        }
+        progressRetryBtn.onclick = function(e) {
+            this.parentNode.remove();
+            downloadWrapper(url, name, headerFlag);
+        }
+        progress.insertBefore(progressRetryBtn, progress.lastChild);
+        progress.lastChild.title = text[11];
+        progress.lastChild.style.color = 'yellow';
+        progress.lastChild.onmouseover = function(e){
+            this.style.color = 'white';
+        }
+        progress.lastChild.onmouseout = function(e){
+            this.style.color = 'yellow';
+        }
+        progress.lastChild.onclick = function(e) {
+            this.parentNode.remove();
+            if(progress.parent.childElementCount == 1) progress.parent.firstChild.style.display = 'none';
+        }
+        // setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000);
     }
 
     let downloadQueueCard = document.createElement('div');
@@ -82,6 +127,7 @@
     downloadQueueCard.style.left = '0.5rem';
     downloadQueueCard.style.maxHeight = '50vh';
     downloadQueueCard.style.overflowY = 'auto';
+    downloadQueueCard.style.overflowX = 'hidden';
     let downloadQueueTitle = document.createElement('div');
     downloadQueueTitle.textContent = text[9];
     downloadQueueTitle.style.fontSize = '0.8rem';
@@ -92,29 +138,52 @@
     let progressBar = document.createElement('div');
     progressBar.style.height = '1.4rem';
     progressBar.style.width = '23rem';
-    // progressBar.style.background = 'linear-gradient(to right, green 60%, transparent 60%)';
+    // progressBar.style.background = 'linear-gradient(to right, red 100%, transparent 100%)';
     progressBar.style.borderStyle = 'solid';
     progressBar.style.borderWidth = '0.1rem';
     progressBar.style.borderColor = 'grey';
     progressBar.style.borderRadius = '0.5rem';
     progressBar.style.boxSizing = 'content-box';
     progressBar.style.marginTop = '0.5rem';
+    progressBar.style.marginRight = '1rem';
+    progressBar.style.position = 'relative';
     let progressText = document.createElement('div');
+    // progressText.textContent = 'test.test';
     progressText.style.mixBlendMode = 'screen';
-    progressText.style.width = '100%';
+    progressText.style.width = 'calc(100% - 1.8rem)';
     progressText.style.textAlign = 'center';
     progressText.style.color = 'orange';
     progressText.style.fontSize = '0.7rem';
     progressText.style.lineHeight = '1.4rem';
     progressText.style.overflow = 'hidden';
     progressBar.appendChild(progressText);
+    let progressCloseBtn = document.createElement('button');
+    progressCloseBtn.style.border = 'unset';
+    progressCloseBtn.style.background = 'unset';
+    progressCloseBtn.style.color = 'orange';
+    progressCloseBtn.style.position = 'absolute';
+    progressCloseBtn.style.right = '0';
+    progressCloseBtn.style.top = '0.1rem';
+    progressCloseBtn.style.fontSize = '1rem';
+    progressCloseBtn.style.lineHeight = '1rem';
+    progressCloseBtn.style.cursor = 'pointer';
+    progressCloseBtn.textContent = '×';
+    progressCloseBtn.title = text[12];
+    progressCloseBtn.onmouseover = function(e){
+        this.style.color = 'red';
+    }
+    progressCloseBtn.onmouseout = function(e){
+        this.style.color = 'orange';
+    }
+    progressBar.appendChild(progressCloseBtn);
     // downloadQueueCard.appendChild(progressBar);
 
     function downloadWrapper(url, name, headerFlag = false) {
         // console.log(url);
-        let progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
         downloadQueueTitle.style.display = 'block';
-        GM_download({
+        let progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
+        progress.firstChild.textContent = name + '[0%]';
+        const download = GM_download({
             url,
             name,
             headers: headerFlag ? {
@@ -127,10 +196,25 @@
                 progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
                 progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
             },
-            onload: (e) => { setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000); },
-            onerror: (e) => { downloadError(e, url, progress); },
-            ontimeout: (e) => { downloadError(e, url, progress); },
+            onload: (e) => {
+                const timeout = setTimeout(() => {
+                    progress.remove();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                }, 1000);
+                progress.lastChild.onclick = function(e) {
+                    clearTimeout(timeout);
+                    this.parentNode.remove();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                }
+            },
+            onerror: (e) => { downloadError(e, url, name, headerFlag, progress); },
+            ontimeout: (e) => { downloadError(e, url, name, headerFlag, progress); },
         });
+        progress.lastChild.onclick = function(e) {
+            download.abort();
+            this.parentNode.remove();
+            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+        }
     }
 
     function getName(originalName, ext, userName, userId, postId, postUid, index, postTime) {
@@ -212,26 +296,29 @@
                         downloadWrapper(largeVidUrl, setName);
                     }
                 }
-                // console.log('download images');
-                let index = 0;
-                let padLength = Object.entries(picInfos).length.toString().length;
-                for (const [id, pic] of Object.entries(picInfos)) {
-                    index += 1;
-                    let largePicUrl = pic.largest.url;
-                    let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
-                    let originalName = picName.split('.')[0];
-                    let ext = picName.split('.')[1];
-                    let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
-                    downloadWrapper(largePicUrl, setName, true);
-                    if(pic.hasOwnProperty('video')) {
-                        let videoUrl = pic.video;
-                        let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
-                        videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
-                        // console.log(videoUrl, videoName);
-                        let originalName = videoName.split('.')[0];
-                        let ext = videoName.split('.')[1];
+                if (picInfos) {
+                    // console.log('download images');
+                    let index = 0;
+                    let padLength = Object.entries(picInfos).length.toString().length;
+                    for (const [id, pic] of Object.entries(picInfos)) {
+                        index += 1;
+                        let largePicUrl = pic.largest.url;
+                        let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
+                        let originalName = picName.split('.')[0];
+                        let ext = picName.split('.')[1];
                         let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
-                        downloadWrapper(videoUrl, setName);
+                        downloadWrapper(largePicUrl, setName, true);
+                        if(pic.hasOwnProperty('video')) {
+                            let videoUrl = pic.video;
+                            let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
+                            videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
+                            if (!videoName.includes('.')) videoName = videoUrl.split('/')[videoUrl.split('/').length - 1].split('?')[0];
+                            // console.log(videoUrl, videoName);
+                            let originalName = videoName.split('.')[0];
+                            let ext = videoName.split('.')[1];
+                            let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
+                            downloadWrapper(videoUrl, setName);
+                        }
                     }
                 }
             }
@@ -291,32 +378,35 @@
                         let largeVidUrl = mediaInfo.playback_list[0].play_info.url;
                         let vidName = largeVidUrl.split('?')[0];
                         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
+                        if (!vidName.includes('.')) vidName = largeVidUrl.split('/')[largeVidUrl.split('/').length - 1].split('?')[0];
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
                         let setName = getName(originalName, ext, userName, userId, postId, postUid, 1);
                         downloadWrapper(largeVidUrl, setName);
                     }
                 }
-                // console.log('download images');
-                let index = 0;
-                let padLength = Object.entries(picInfos).length.toString().length;
-                for (const [id, pic] of Object.entries(picInfos)) {
-                    index += 1;
-                    let largePicUrl = pic.largest.url;
-                    let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
-                    let originalName = picName.split('.')[0];
-                    let ext = picName.split('.')[1];
-                    let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
-                    downloadWrapper(largePicUrl, setName, true);
-                    if(pic.hasOwnProperty('video')) {
-                        let videoUrl = pic.video;
-                        let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
-                        videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
-                        // console.log(videoUrl, videoName);
-                        let originalName = videoName.split('.')[0];
-                        let ext = videoName.split('.')[1];
+                if (picInfos) {
+                    // console.log('download images');
+                    let index = 0;
+                    let padLength = Object.entries(picInfos).length.toString().length;
+                    for (const [id, pic] of Object.entries(picInfos)) {
+                        index += 1;
+                        let largePicUrl = pic.largest.url;
+                        let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
+                        let originalName = picName.split('.')[0];
+                        let ext = picName.split('.')[1];
                         let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
-                        downloadWrapper(videoUrl, setName);
+                        downloadWrapper(largePicUrl, setName, true);
+                        if(pic.hasOwnProperty('video')) {
+                            let videoUrl = pic.video;
+                            let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
+                            videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
+                            // console.log(videoUrl, videoName);
+                            let originalName = videoName.split('.')[0];
+                            let ext = videoName.split('.')[1];
+                            let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
+                            downloadWrapper(videoUrl, setName);
+                        }
                     }
                 }
             }
