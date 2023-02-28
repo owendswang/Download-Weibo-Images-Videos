@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.7.1
+// @version      0.8.0
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -16,11 +16,20 @@
 // @homepage     https://greasyfork.org/scripts/430877
 // @supportURL   https://github.com/owendswang/Download-Weibo-Images-Videos
 // @grant        GM_download
+// @grant        GM_xmlhttpRequest
 // @grant        GM_notification
 // @grant        GM_getValue
 // @grant        GM_setValue
-// @namespace http://tampermonkey.net/
+// @connect      wx1.sinaimg.cn
+// @connect      wx2.sinaimg.cn
+// @connect      wx3.sinaimg.cn
+// @connect      wx4.sinaimg.cn
+// @connect      g.us.sinaimg.cn
+// @connect      f.video.weibocdn.com
+// @namespace    http://tampermonkey.net/
 // @run-at       document-end
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.9.1/jszip.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // ==/UserScript==
 
 (function() {
@@ -41,6 +50,9 @@
         '重试',
         '关闭',
         '取消',
+        '打包下载',
+        '打包文件名',
+        '与“下载文件名”规则相同，但{original}、{ext}、{index}除外',
     ];
     let text_en = [
         'Add Download Buttons',
@@ -56,6 +68,9 @@
         'Retry',
         'Close',
         'Cancel',
+        'Pack download files as a ZIP file',
+        'ZIP File Name',
+        'The same rules as "Download File Name" except {original}, {ext} and {index}',
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -70,7 +85,7 @@
         return xmlHttp.responseText;
     }
 
-    function downloadError(e, url, name, headerFlag, progress) {
+    function downloadError(e, url, name, headerFlag, progress, zipMode = false) {
         console.log(e, url);
         /*GM_notification({
             title: 'Download error',
@@ -82,42 +97,44 @@
         progress.firstChild.textContent = name + ' [' + (e.error || 'Unknown') + ']';
         progress.firstChild.style.color = 'yellow';
         progress.firstChild.style.mixBlendMode = 'unset';
-        let progressRetryBtn = document.createElement('button');
-        progressRetryBtn.style.border = 'unset';
-        progressRetryBtn.style.background = 'unset';
-        progressRetryBtn.style.color = 'yellow';
-        progressRetryBtn.style.position = 'absolute';
-        progressRetryBtn.style.right = '1.2rem';
-        progressRetryBtn.style.top = '0.05rem';
-        progressRetryBtn.style.fontSize = '1rem';
-        progressRetryBtn.style.lineHeight = '1rem';
-        progressRetryBtn.style.cursor = 'pointer';
-        progressRetryBtn.style.letterSpacing = '-0.2rem';
-        progressRetryBtn.textContent = '⤤⤦';
-        progressRetryBtn.title = text[10];
-        progressRetryBtn.onmouseover = function(e){
-            this.style.color = 'white';
+        if (!zipMode) {
+            let progressRetryBtn = document.createElement('button');
+            progressRetryBtn.style.border = 'unset';
+            progressRetryBtn.style.background = 'unset';
+            progressRetryBtn.style.color = 'yellow';
+            progressRetryBtn.style.position = 'absolute';
+            progressRetryBtn.style.right = '1.2rem';
+            progressRetryBtn.style.top = '0.05rem';
+            progressRetryBtn.style.fontSize = '1rem';
+            progressRetryBtn.style.lineHeight = '1rem';
+            progressRetryBtn.style.cursor = 'pointer';
+            progressRetryBtn.style.letterSpacing = '-0.2rem';
+            progressRetryBtn.textContent = '⤤⤦';
+            progressRetryBtn.title = text[10];
+            progressRetryBtn.onmouseover = function(e){
+                this.style.color = 'white';
+            }
+            progressRetryBtn.onmouseout = function(e){
+                this.style.color = 'yellow';
+            }
+            progressRetryBtn.onclick = function(e) {
+                this.parentNode.remove();
+                downloadWrapper(url, name, headerFlag);
+            }
+            progress.insertBefore(progressRetryBtn, progress.lastChild);
         }
-        progressRetryBtn.onmouseout = function(e){
-            this.style.color = 'yellow';
-        }
-        progressRetryBtn.onclick = function(e) {
-            this.parentNode.remove();
-            downloadWrapper(url, name, headerFlag);
-        }
-        progress.insertBefore(progressRetryBtn, progress.lastChild);
         progress.lastChild.title = text[11];
         progress.lastChild.style.color = 'yellow';
         progress.lastChild.onmouseover = function(e){
             this.style.color = 'white';
-        }
+        };
         progress.lastChild.onmouseout = function(e){
             this.style.color = 'yellow';
-        }
+        };
         progress.lastChild.onclick = function(e) {
             this.parentNode.remove();
             if(progress.parent.childElementCount == 1) progress.parent.firstChild.style.display = 'none';
-        }
+        };
         // setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000);
     }
 
@@ -150,7 +167,7 @@
     let progressText = document.createElement('div');
     // progressText.textContent = 'test.test';
     progressText.style.mixBlendMode = 'screen';
-    progressText.style.width = 'calc(100% - 1.8rem)';
+    progressText.style.width = '100%';
     progressText.style.textAlign = 'center';
     progressText.style.color = 'orange';
     progressText.style.fontSize = '0.7rem';
@@ -178,47 +195,87 @@
     progressBar.appendChild(progressCloseBtn);
     // downloadQueueCard.appendChild(progressBar);
 
-    function downloadWrapper(url, name, headerFlag = false) {
+    function downloadWrapper(url, name, headerFlag = false, zipMode = false) {
         // console.log(url);
         downloadQueueTitle.style.display = 'block';
         let progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
-        progress.firstChild.textContent = name + '[0%]';
-        const download = GM_download({
-            url,
-            name,
-            headers: headerFlag ? {
-                'Referer': 'https://weibo.com/',
-                'Origin': 'https://weibo.com/'
-            } : null,
-            onprogress: (e) => {
-                // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
-                const percent = e.done / e.total * 100;
-                progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
-                progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
-            },
-            onload: (e) => {
-                const timeout = setTimeout(() => {
-                    progress.remove();
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                }, 1000);
+        progress.firstChild.textContent = name + ' [0%]';
+        if (zipMode) {
+            return new Promise(function(resolve, reject) {
+                const download = GM_xmlhttpRequest({
+                    method: 'GET',
+                    url,
+                    responseType: 'blob',
+                    headers: headerFlag ? {
+                        'Referer': 'https://weibo.com/',
+                        'Origin': 'https://weibo.com/'
+                    } : null,
+                    onprogress: (e) => {
+                        // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
+                        const percent = e.done / e.total * 100;
+                        progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
+                        progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
+                    },
+                    onload: ({ status, response }) => {
+                        const timeout = setTimeout(() => {
+                            progress.remove();
+                            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                        }, 1000);
+                        progress.lastChild.onclick = function(e) {
+                            clearTimeout(timeout);
+                            this.parentNode.remove();
+                            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                        }
+                        resolve(response);
+                    },
+                    onabort: (e) => { downloadError(e, url, name, headerFlag, progress); resolve(null); },
+                    onerror: (e) => { downloadError(e, url, name, headerFlag, progress); resolve(null); },
+                    ontimeout: (e) => { downloadError(e, url, name, headerFlag, progress); resolve(null); },
+                });
                 progress.lastChild.onclick = function(e) {
-                    clearTimeout(timeout);
+                    download.abort();
                     this.parentNode.remove();
                     if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                }
-            },
-            onerror: (e) => { downloadError(e, url, name, headerFlag, progress); },
-            ontimeout: (e) => { downloadError(e, url, name, headerFlag, progress); },
-        });
-        progress.lastChild.onclick = function(e) {
-            download.abort();
-            this.parentNode.remove();
-            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                };
+            });
+        } else {
+            const download = GM_download({
+                url,
+                name,
+                headers: headerFlag ? {
+                    'Referer': 'https://weibo.com/',
+                    'Origin': 'https://weibo.com/'
+                } : null,
+                onprogress: (e) => {
+                    // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
+                    const percent = e.done / e.total * 100;
+                    progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
+                    progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
+                },
+                onload: ({ status, response }) => {
+                    const timeout = setTimeout(() => {
+                        progress.remove();
+                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    }, 1000);
+                    progress.lastChild.onclick = function(e) {
+                        clearTimeout(timeout);
+                        this.parentNode.remove();
+                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    }
+                },
+                onerror: (e) => { downloadError(e, url, name, headerFlag, progress); },
+                ontimeout: (e) => { downloadError(e, url, name, headerFlag, progress); },
+            });
+            progress.lastChild.onclick = function(e) {
+                download.abort();
+                this.parentNode.remove();
+                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+            };
         }
     }
 
-    function getName(originalName, ext, userName, userId, postId, postUid, index, postTime) {
-        let setName = GM_getValue('dlFileName', '{original}.{ext}');
+    function getName(nameSetting, originalName, ext, userName, userId, postId, postUid, index, postTime) {
+        let setName = nameSetting;
         setName = setName.replace('{ext}', ext);
         setName = setName.replace('{original}', originalName);
         setName = setName.replace('{username}', userName);
@@ -245,6 +302,32 @@
         return setName.replace(/[<>|\|*|"|\/|\|:|?]/g, '_');
     }
 
+    function handleDownloadList(downloadList, packName) {
+        if (GM_getValue('zipMode', false)) {
+            let zip = new JSZip();
+            // console.log('zip', zip);
+            let promises = downloadList.map(async function(ele, idx) {
+                return await downloadWrapper(ele.url, ele.name, ele.headerFlag, true).then(function(data) {
+                    // console.log('data', data);
+                    if (data) zip.file(downloadList[idx].name, data);
+                });
+            });
+            // console.log('promises', promises);
+            Promise.all(promises).then(async function(responseList) {
+                // console.log('responseList', responseList);
+                // console.log('zip', zip);
+                // console.log('generateAsync', zip.generateAsync());
+                const content = await zip.generateAsync({ type: 'blob', streamFiles: true }/*, function({ percent, currentFile }) { console.log(percent); }*/);
+                // console.log('content', content);
+                if (zip.files && Object.keys(zip.files).length > 0) saveAs(content, packName);
+            });
+        } else {
+            for (const item of downloadList) {
+                downloadWrapper(item.url, item.name, item.headerFlag);
+            }
+        }
+    }
+
     function addDlBtn(footer) {
         let dlBtnDiv = document.createElement('div');
         dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D';
@@ -255,7 +338,7 @@
         dlBtn.setAttribute('tabindex', '0');
         dlBtn.setAttribute('title', '下载');
         dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
-        dlBtn.addEventListener('click', function(event) {
+        dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
             const article = this.parentElement.parentElement.parentElement.parentElement.parentElement;
             if( article.tagName.toLowerCase() == 'article') {
@@ -268,21 +351,17 @@
                 // console.log(resJson);
                 let picInfos = [];
                 let userName, userId, postUid, postTime;
+                let status = resJson;
                 if(resJson.hasOwnProperty('retweeted_status')) {
-                    postId = resJson.retweeted_status.mblogid;
-                    picInfos = resJson.retweeted_status.pic_infos;
-                    userName = resJson.retweeted_status.user.screen_name;
-                    userId = resJson.retweeted_status.user.idstr;
-                    postUid = resJson.retweeted_status.idstr;
-                    postTime = resJson.retweeted_status.created_at;
-                } else {
-                    postId = resJson.mblogid;
-                    picInfos = resJson.pic_infos;
-                    userName = resJson.user.screen_name;
-                    userId = resJson.user.idstr;
-                    postUid = resJson.idstr;
-                    postTime = resJson.created_at;
+                    status = resJson.retweeted_status;
                 }
+                postId = status.mblogid;
+                picInfos = status.pic_infos;
+                userName = status.user.screen_name;
+                userId = status.user.idstr;
+                postUid = status.idstr;
+                postTime = status.created_at;
+                let downloadList = [];
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
@@ -293,7 +372,7 @@
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
                         let setName = getName(originalName, ext, userName, userId, postId, postUid, 1, postTime);
-                        downloadWrapper(largeVidUrl, setName);
+                        downloadList.push({ url: largeVidUrl, name: setName });
                     }
                 }
                 if (picInfos) {
@@ -306,8 +385,8 @@
                         let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
                         let originalName = picName.split('.')[0];
                         let ext = picName.split('.')[1];
-                        let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
-                        downloadWrapper(largePicUrl, setName, true);
+                        let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
+                        downloadList.push({ url: largePicUrl, name: setName, headerFlag: true });
                         if(pic.hasOwnProperty('video')) {
                             let videoUrl = pic.video;
                             let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
@@ -316,11 +395,12 @@
                             // console.log(videoUrl, videoName);
                             let originalName = videoName.split('.')[0];
                             let ext = videoName.split('.')[1];
-                            let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
-                            downloadWrapper(videoUrl, setName);
+                            let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
+                            downloadList.push({ url: videoUrl, name: setName });
                         }
                     }
                 }
+                handleDownloadList(downloadList, getName(GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}'));
             }
         });
         divInDiv.appendChild(dlBtn);
@@ -357,20 +437,18 @@
                 const resJson = JSON.parse(response);
                 // console.log(resJson);
                 let picInfos = [];
-                let userName, userId, postUid, postId;
+                let userName, userId, postUid, postId, postTime;
+                let status = resJson;
                 if(resJson.hasOwnProperty('retweeted_status')) {
-                    postId = resJson.retweeted_status.mblogid;
-                    picInfos = resJson.retweeted_status.pic_infos;
-                    userName = resJson.retweeted_status.user.screen_name;
-                    userId = resJson.retweeted_status.user.idstr;
-                    postUid = resJson.retweeted_status.idstr;
-                } else {
-                    postId = resJson.mblogid;
-                    picInfos = resJson.pic_infos;
-                    userName = resJson.user.screen_name;
-                    userId = resJson.user.idstr;
-                    postUid = resJson.idstr;
+                    status = resJson.retweeted_status;
                 }
+                postId = status.mblogid;
+                picInfos = status.pic_infos;
+                userName = status.user.screen_name;
+                userId = status.user.idstr;
+                postUid = status.idstr;
+                postTime = status.created_at;
+                let downloadList = [];
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
@@ -381,8 +459,8 @@
                         if (!vidName.includes('.')) vidName = largeVidUrl.split('/')[largeVidUrl.split('/').length - 1].split('?')[0];
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
-                        let setName = getName(originalName, ext, userName, userId, postId, postUid, 1);
-                        downloadWrapper(largeVidUrl, setName);
+                        let setName = getName(originalName, ext, userName, userId, postId, postUid, 1, postTime);
+                        downloadList.push({ url: largeVidUrl, name: setName });
                     }
                 }
                 if (picInfos) {
@@ -395,8 +473,8 @@
                         let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
                         let originalName = picName.split('.')[0];
                         let ext = picName.split('.')[1];
-                        let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
-                        downloadWrapper(largePicUrl, setName, true);
+                        let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
+                        downloadList.push({ url: largePicUrl, name: setName, headerFlag: true });
                         if(pic.hasOwnProperty('video')) {
                             let videoUrl = pic.video;
                             let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
@@ -404,11 +482,12 @@
                             // console.log(videoUrl, videoName);
                             let originalName = videoName.split('.')[0];
                             let ext = videoName.split('.')[1];
-                            let setName = getName(originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
-                            downloadWrapper(videoUrl, setName);
+                            let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
+                            downloadList.push({ url: videoUrl, name: setName });
                         }
                     }
                 }
+                handleDownloadList(downloadList, getName(GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}'));
             }
         });
         aInLi.appendChild(dlBtn);
@@ -572,32 +651,31 @@
         titleBar.style.borderTopLeftRadius = '0.3rem';
         titleBar.style.borderTopRightRadius = '0.3rem';
         modal.appendChild(titleBar);
-        let question = document.createElement('p');
-        question.textContent = text[2];
-        question.style.paddingLeft = '2rem';
-        question.style.paddingRight = '2rem';
-        question.style.marginTop = '1rem';
-        question.style.marginBottom = '0.5rem';
-        modal.appendChild(question);
+        let question1 = document.createElement('p');
+        question1.textContent = text[2];
+        question1.style.paddingLeft = '2rem';
+        question1.style.paddingRight = '2rem';
+        question1.style.marginTop = '1rem';
+        question1.style.marginBottom = '1rem';
         let chooseButton = document.createElement('input');
         chooseButton.type = 'radio';
         chooseButton.id = 'chooseButton';
         chooseButton.name = 'chooseSetting';
         chooseButton.value = 1;
+        chooseButton.style.marginTop = '0.5rem';
         let labelForChooseButton = document.createElement('label');
         labelForChooseButton.htmlFor = 'chooseButton';
         labelForChooseButton.textContent = text[3];
         let divForChooseButton = document.createElement('div');
-        divForChooseButton.style.paddingLeft = '2rem';
-        divForChooseButton.style.paddingRight = '2rem';
         divForChooseButton.appendChild(chooseButton);
         divForChooseButton.appendChild(labelForChooseButton);
-        modal.appendChild(divForChooseButton);
+        question1.appendChild(divForChooseButton);
         let chooseEvent = document.createElement('input');
         chooseEvent.type = 'radio';
         chooseEvent.id = 'chooseEvent';
         chooseEvent.name = 'chooseSetting';
         chooseEvent.value = 2;
+        chooseEvent.style.marginTop = '0.5rem';
         if (addDlBtnMode == 2) {
             chooseEvent.checked = true;
         } else {
@@ -607,36 +685,91 @@
         labelForChooseEvent.htmlFor = 'chooseEvent';
         labelForChooseEvent.textContent = text[4];
         let divForChooseEvent = document.createElement('div');
-        divForChooseEvent.style.paddingLeft = '2rem';
-        divForChooseEvent.style.paddingRight = '2rem';
         divForChooseEvent.appendChild(chooseEvent);
         divForChooseEvent.appendChild(labelForChooseEvent);
-        modal.appendChild(divForChooseEvent);
+        question1.appendChild(divForChooseEvent);
+        modal.appendChild(question1);
         let question2 = document.createElement('p');
-        question2.textContent = text[7];
         question2.style.paddingLeft = '2rem';
         question2.style.paddingRight = '2rem';
         question2.style.marginTop = '1rem';
-        question2.style.marginBottom = '0.5rem';
-        modal.appendChild(question2);
+        question2.style.marginBottom = '1rem';
+        let labelFileName = document.createElement('label');
+        labelFileName.textContent = text[7];
+        labelFileName.setAttribute('for', 'dlFileName');
+        question2.appendChild(labelFileName);
         let inputFileName = document.createElement('input');
         inputFileName.type = 'text';
         inputFileName.id = 'dlFileName';
         inputFileName.name = 'dlFileName';
-        inputFileName.style.marginLeft = '2rem';
-        inputFileName.style.marginRight = '2rem';
-        inputFileName.style.width = 'calc(100% - 5rem)';
+        inputFileName.style.marginTop = '0.5rem';
+        inputFileName.style.width = 'calc(100% - 1rem)';
         inputFileName.defaultValue = GM_getValue('dlFileName', '{original}.{ext}');
-        modal.appendChild(inputFileName);
+        question2.appendChild(inputFileName);
         let fileNameExplain = document.createElement('p');
         fileNameExplain.textContent = text[8];
-        fileNameExplain.style.paddingLeft = '2rem';
-        fileNameExplain.style.paddingRight = '2rem';
         fileNameExplain.style.marginTop = '0.5rem';
-        fileNameExplain.style.marginBottom = '0';
         fileNameExplain.style.whiteSpace = 'pre';
         fileNameExplain.style.color = 'gray';
-        modal.appendChild(fileNameExplain);
+        question2.appendChild(fileNameExplain);
+        modal.appendChild(question2);
+        let question3 = document.createElement('p');
+        question3.style.paddingLeft = '2rem';
+        question3.style.paddingRight = '2rem';
+        question3.style.marginTop = '1rem';
+        question3.style.marginBottom = '0';
+        let labelZipMode = document.createElement('label');
+        labelZipMode.setAttribute('for', 'zipMode');
+        labelZipMode.textContent = text[13];
+        labelZipMode.style.display = 'inline-block';
+        labelZipMode.style.paddingRight = '0.2rem';
+        question3.appendChild(labelZipMode);
+        let inputZipMode = document.createElement('input');
+        inputZipMode.type = 'checkbox';
+        inputZipMode.id = 'zipMode';
+        inputZipMode.checked = GM_getValue('zipMode', false);
+        question3.appendChild(inputZipMode);
+        let labelPackName = document.createElement('label');
+        labelPackName.textContent = text[14];
+        labelPackName.setAttribute('for', 'packFileName');
+        labelPackName.style.display = 'block';
+        labelPackName.style.marginTop = '0.5rem';
+        labelPackName.style.color = GM_getValue('zipMode', false) ? null : 'gray';
+        // labelPackName.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
+        question3.appendChild(labelPackName);
+        let inputPackName = document.createElement('input');
+        inputPackName.type = 'text';
+        inputPackName.id = 'packFileName';
+        inputPackName.name = 'packFileName';
+        inputPackName.style.marginTop = '0.5rem';
+        inputPackName.style.width = 'calc(100% - 1rem)';
+        inputPackName.defaultValue = GM_getValue('packFileName', '{mblogid}.zip');
+        // inputPackName.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
+        inputPackName.disabled = GM_getValue('zipMode', false) ? false : true;
+        question3.appendChild(inputPackName);
+        let filePackExplain = document.createElement('p');
+        filePackExplain.textContent = text[15];
+        filePackExplain.style.marginTop = '0.5rem';
+        filePackExplain.style.marginBottom = '0';
+        filePackExplain.style.color = 'gray';
+        // filePackExplain.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
+        inputZipMode.addEventListener('change', function(event) {
+            if (event.currentTarget.checked) {
+                // labelPackName.style.display = 'block';
+                // inputPackName.style.display = 'block';
+                // filePackExplain.style.display = 'block';
+                inputPackName.disabled = false;
+                labelPackName.style.color = null;
+            } else {
+                // labelPackName.style.display = 'none';
+                // inputPackName.style.display = 'none';
+                // filePackExplain.style.display = 'none';
+                inputPackName.disabled = true;
+                labelPackName.style.color = 'gray';
+            }
+        });
+        question3.appendChild(filePackExplain);
+        modal.appendChild(question3);
         let okButton = document.createElement('button');
         okButton.textContent = text[5];
         okButton.style.paddingTop = '0.5rem';
@@ -681,6 +814,8 @@
                 addEventListener();
             }
             GM_setValue('dlFileName', document.getElementById('dlFileName').value);
+            GM_setValue('zipMode', document.getElementById('zipMode').checked);
+            GM_setValue('packFileName', document.getElementById('packFileName').value);
             document.body.removeChild(modal);
             document.body.removeChild(bg);
             window.removeEventListener('resize', resizeWindow);
