@@ -9,7 +9,7 @@ A Tampermonkey script to download weibo images and videos.
 - Customize download files' name
 - Support on 's.weibo.com'
 - Display download progress and queue at the bottom left corner of the page
-- Support packing all download files as a ZIP file.
+- Support packing all download files as a ZIP file
 
 ## Screenshot:
 ![1.jpg](res/1.JPG?raw=true)
