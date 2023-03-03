@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.8.0
+// @version      0.8.1
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -371,7 +371,7 @@
                         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
-                        let setName = getName(originalName, ext, userName, userId, postId, postUid, 1, postTime);
+                        let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, 1, postTime);
                         downloadList.push({ url: largeVidUrl, name: setName });
                     }
                 }
@@ -459,7 +459,7 @@
                         if (!vidName.includes('.')) vidName = largeVidUrl.split('/')[largeVidUrl.split('/').length - 1].split('?')[0];
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
-                        let setName = getName(originalName, ext, userName, userId, postId, postUid, 1, postTime);
+                        let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, 1, postTime);
                         downloadList.push({ url: largeVidUrl, name: setName });
                     }
                 }
