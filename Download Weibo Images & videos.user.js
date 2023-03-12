@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.8.1
+// @version      0.8.2
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -45,7 +45,7 @@
         '确定',
         '下载设置',
         '下载文件名称',
-        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用',
+        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用\n{content} - 博文内容（最多前50个字符）',
         '下载队列',
         '重试',
         '关闭',
@@ -63,7 +63,7 @@
         'OK',
         'Download Setting',
         'Download File Name',
-        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post',
+        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post\n{content} - Weibo post content (limited to first 50 characters)',
         'Download Queue',
         'Retry',
         'Close',
@@ -274,7 +274,7 @@
         }
     }
 
-    function getName(nameSetting, originalName, ext, userName, userId, postId, postUid, index, postTime) {
+    function getName(nameSetting, originalName, ext, userName, userId, postId, postUid, index, postTime, content) {
         let setName = nameSetting;
         setName = setName.replace('{ext}', ext);
         setName = setName.replace('{original}', originalName);
@@ -283,6 +283,7 @@
         setName = setName.replace('{mblogid}', postId);
         setName = setName.replace('{uid}', postUid);
         setName = setName.replace('{index}', index);
+        setName = setName.replace('{content}', content.substring(0, 50));
         let YYYY, MM, DD, HH, mm, ss;
         const postAt = new Date(postTime);
         if (postTime) {
@@ -299,7 +300,7 @@
         setName = setName.replace('{HH}', HH);
         setName = setName.replace('{mm}', mm);
         setName = setName.replace('{ss}', ss);
-        return setName.replace(/[<>|\|*|"|\/|\|:|?]/g, '_');
+        return setName.replace(/[<|>|*|"|\/|\|:|?|\n]/g, '_');
     }
 
     function handleDownloadList(downloadList, packName) {
@@ -349,19 +350,18 @@
                 const response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
                 const resJson = JSON.parse(response);
                 // console.log(resJson);
-                let picInfos = [];
-                let userName, userId, postUid, postTime;
                 let status = resJson;
                 if(resJson.hasOwnProperty('retweeted_status')) {
                     status = resJson.retweeted_status;
                 }
                 postId = status.mblogid;
-                picInfos = status.pic_infos;
-                userName = status.user.screen_name;
-                userId = status.user.idstr;
-                postUid = status.idstr;
-                postTime = status.created_at;
-                let downloadList = [];
+                const picInfos = status.pic_infos;
+                const userName = status.user.screen_name;
+                const userId = status.user.idstr;
+                const postUid = status.idstr;
+                const postTime = status.created_at;
+                const text = status.text_raw;
+                const downloadList = [];
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
@@ -371,7 +371,7 @@
                         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
-                        let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, 1, postTime);
+                        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, 1, postTime, text);
                         downloadList.push({ url: largeVidUrl, name: setName });
                     }
                 }
@@ -385,7 +385,7 @@
                         let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
                         let originalName = picName.split('.')[0];
                         let ext = picName.split('.')[1];
-                        let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
+                        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
                         downloadList.push({ url: largePicUrl, name: setName, headerFlag: true });
                         if(pic.hasOwnProperty('video')) {
                             let videoUrl = pic.video;
@@ -395,12 +395,13 @@
                             // console.log(videoUrl, videoName);
                             let originalName = videoName.split('.')[0];
                             let ext = videoName.split('.')[1];
-                            let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime);
+                            const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
                             downloadList.push({ url: videoUrl, name: setName });
                         }
                     }
                 }
-                handleDownloadList(downloadList, getName(GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}'));
+                const packName = getName(GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text);
+                handleDownloadList(downloadList, packName);
             }
         });
         divInDiv.appendChild(dlBtn);
@@ -436,19 +437,18 @@
                 const response = httpGet('https://weibo.com/ajax/statuses/show?id=' + mid);
                 const resJson = JSON.parse(response);
                 // console.log(resJson);
-                let picInfos = [];
-                let userName, userId, postUid, postId, postTime;
                 let status = resJson;
                 if(resJson.hasOwnProperty('retweeted_status')) {
                     status = resJson.retweeted_status;
                 }
-                postId = status.mblogid;
-                picInfos = status.pic_infos;
-                userName = status.user.screen_name;
-                userId = status.user.idstr;
-                postUid = status.idstr;
-                postTime = status.created_at;
-                let downloadList = [];
+                const postId = status.mblogid;
+                const picInfos = status.pic_infos;
+                const userName = status.user.screen_name;
+                const userId = status.user.idstr;
+                const postUid = status.idstr;
+                const postTime = status.created_at;
+                const text = status.text_raw;
+                const downloadList = [];
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
@@ -459,7 +459,7 @@
                         if (!vidName.includes('.')) vidName = largeVidUrl.split('/')[largeVidUrl.split('/').length - 1].split('?')[0];
                         let originalName = vidName.split('.')[0];
                         let ext = vidName.split('.')[1];
-                        let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, 1, postTime);
+                        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, 1, postTime, text);
                         downloadList.push({ url: largeVidUrl, name: setName });
                     }
                 }
@@ -473,7 +473,7 @@
                         let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
                         let originalName = picName.split('.')[0];
                         let ext = picName.split('.')[1];
-                        let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
+                        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
                         downloadList.push({ url: largePicUrl, name: setName, headerFlag: true });
                         if(pic.hasOwnProperty('video')) {
                             let videoUrl = pic.video;
@@ -482,12 +482,13 @@
                             // console.log(videoUrl, videoName);
                             let originalName = videoName.split('.')[0];
                             let ext = videoName.split('.')[1];
-                            let setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'));
+                            const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
                             downloadList.push({ url: videoUrl, name: setName });
                         }
                     }
                 }
-                handleDownloadList(downloadList, getName(GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}'));
+                const packName = getName(GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text);
+                handleDownloadList(downloadList, packName);
             }
         });
         aInLi.appendChild(dlBtn);
