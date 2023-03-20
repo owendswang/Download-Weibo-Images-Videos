@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.8.2
+// @version      0.9
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -329,6 +329,49 @@
         }
     }
 
+    function handleVideo(mediaInfo, padLength, userName, userId, postId, postUid, index, postTime, text) {
+        const newList = [];
+        let largeVidUrl = mediaInfo.playback_list ? mediaInfo.playback_list[0].play_info.url : mediaInfo.stream_url;
+        let vidName = largeVidUrl.split('?')[0];
+        vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
+        let originalName = vidName.split('.')[0];
+        let ext = vidName.split('.')[1];
+        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
+        newList.push({ url: largeVidUrl, name: setName });
+        if(mediaInfo.hasOwnProperty('pic_info')) {
+            let picUrl = mediaInfo.pic_info.pic_big.url;
+            let largePicUrl = picUrl.replace('/orj480/', '/large/');
+            let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
+            let originalName = picName.split('.')[0];
+            let ext = picName.split('.')[1];
+            const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
+            newList.push({url: largePicUrl, name: setName });
+        }
+        return newList;
+    }
+
+    function handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text) {
+        let newList = [];
+        let largePicUrl = pic.largest.url;
+        let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
+        let originalName = picName.split('.')[0];
+        let ext = picName.split('.')[1];
+        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
+        newList.push({ url: largePicUrl, name: setName, headerFlag: true });
+        if(pic.hasOwnProperty('video')) {
+            let videoUrl = pic.video;
+            let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
+            videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
+            if (!videoName.includes('.')) videoName = videoUrl.split('/')[videoUrl.split('/').length - 1].split('?')[0];
+            // console.log(videoUrl, videoName);
+            let originalName = videoName.split('.')[0];
+            let ext = videoName.split('.')[1];
+            const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
+            newList.push({ url: videoUrl, name: setName });
+        }
+        return newList;
+    }
+
     function addDlBtn(footer) {
         let dlBtnDiv = document.createElement('div');
         dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D';
@@ -342,7 +385,7 @@
         dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
             const article = this.parentElement.parentElement.parentElement.parentElement.parentElement;
-            if( article.tagName.toLowerCase() == 'article') {
+            if(article.tagName.toLowerCase() == 'article') {
                 // let contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
                 const header = article.getElementsByTagName('header')[0];
                 const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
@@ -356,23 +399,17 @@
                 }
                 postId = status.mblogid;
                 const picInfos = status.pic_infos;
+                const mixMediaInfo = status.mix_media_info;
                 const userName = status.user.screen_name;
                 const userId = status.user.idstr;
                 const postUid = status.idstr;
                 const postTime = status.created_at;
                 const text = status.text_raw;
-                const downloadList = [];
+                let downloadList = [];
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
-                        let mediaInfo = resJson.page_info.media_info;
-                        let largeVidUrl = mediaInfo.playback_list[0].play_info.url;
-                        let vidName = largeVidUrl.split('?')[0];
-                        vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
-                        let originalName = vidName.split('.')[0];
-                        let ext = vidName.split('.')[1];
-                        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, 1, postTime, text);
-                        downloadList.push({ url: largeVidUrl, name: setName });
+                        downloadList = downloadList.concat(handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text));
                     }
                 }
                 if (picInfos) {
@@ -381,22 +418,19 @@
                     let padLength = Object.entries(picInfos).length.toString().length;
                     for (const [id, pic] of Object.entries(picInfos)) {
                         index += 1;
-                        let largePicUrl = pic.largest.url;
-                        let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
-                        let originalName = picName.split('.')[0];
-                        let ext = picName.split('.')[1];
-                        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
-                        downloadList.push({ url: largePicUrl, name: setName, headerFlag: true });
-                        if(pic.hasOwnProperty('video')) {
-                            let videoUrl = pic.video;
-                            let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
-                            videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
-                            if (!videoName.includes('.')) videoName = videoUrl.split('/')[videoUrl.split('/').length - 1].split('?')[0];
-                            // console.log(videoUrl, videoName);
-                            let originalName = videoName.split('.')[0];
-                            let ext = videoName.split('.')[1];
-                            const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
-                            downloadList.push({ url: videoUrl, name: setName });
+                        downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text));
+                    }
+                }
+                if (mixMediaInfo && mixMediaInfo.items) {
+                    // console.log('mix media');
+                    let index = 0;
+                    let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
+                    for (const [id, media] of Object.entries(mixMediaInfo.items)) {
+                        index += 1;
+                        if(media.type === 'video') {
+                            downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text));
+                        } else if (media.type === 'pic') {
+                            downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text));
                         }
                     }
                 }
@@ -443,24 +477,17 @@
                 }
                 const postId = status.mblogid;
                 const picInfos = status.pic_infos;
+                const mixMediaInfo = status.mix_media_info;
                 const userName = status.user.screen_name;
                 const userId = status.user.idstr;
                 const postUid = status.idstr;
                 const postTime = status.created_at;
                 const text = status.text_raw;
-                const downloadList = [];
+                let downloadList = [];
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
-                        let mediaInfo = resJson.page_info.media_info;
-                        let largeVidUrl = mediaInfo.playback_list[0].play_info.url;
-                        let vidName = largeVidUrl.split('?')[0];
-                        vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
-                        if (!vidName.includes('.')) vidName = largeVidUrl.split('/')[largeVidUrl.split('/').length - 1].split('?')[0];
-                        let originalName = vidName.split('.')[0];
-                        let ext = vidName.split('.')[1];
-                        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, 1, postTime, text);
-                        downloadList.push({ url: largeVidUrl, name: setName });
+                        downloadList = downloadList.concat(handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text));
                     }
                 }
                 if (picInfos) {
@@ -469,21 +496,19 @@
                     let padLength = Object.entries(picInfos).length.toString().length;
                     for (const [id, pic] of Object.entries(picInfos)) {
                         index += 1;
-                        let largePicUrl = pic.largest.url;
-                        let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
-                        let originalName = picName.split('.')[0];
-                        let ext = picName.split('.')[1];
-                        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
-                        downloadList.push({ url: largePicUrl, name: setName, headerFlag: true });
-                        if(pic.hasOwnProperty('video')) {
-                            let videoUrl = pic.video;
-                            let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
-                            videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
-                            // console.log(videoUrl, videoName);
-                            let originalName = videoName.split('.')[0];
-                            let ext = videoName.split('.')[1];
-                            const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
-                            downloadList.push({ url: videoUrl, name: setName });
+                        downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text));
+                    }
+                }
+                if (mixMediaInfo && mixMediaInfo.items) {
+                    // console.log('mix media');
+                    let index = 0;
+                    let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
+                    for (const [id, media] of Object.entries(mixMediaInfo.items)) {
+                        index += 1;
+                        if(media.type === 'video') {
+                            downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text));
+                        } else if (media.type === 'pic') {
+                            downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text));
                         }
                     }
                 }
