@@ -1,16 +1,19 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.9
+// @version      0.9.1
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
 // @match        https://weibo.com/*
+// @match        https://www.weibo.com/*
 // @match        https://s.weibo.com/weibo*
 // @match        https://s.weibo.com/realtime*
 // @match        https://s.weibo.com/video*
 // @exclude      https://weibo.com/tv/*
+// @exclude      https://www.weibo.com/tv/*
 // @exclude      https://weibo.com/p/*
+// @exclude      https://www.weibo.com/p/*
 // @icon         https://weibo.com/favicon.ico
 // @license      MIT
 // @homepage     https://greasyfork.org/scripts/430877
@@ -530,7 +533,7 @@
         symbol.innerHTML = '<path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path><path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path>';
         svg.appendChild(symbol);
 
-        if (location.host == 'weibo.com') {
+        if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
             // let arts = document.getElementsByTagName('article');
             const footers = document.getElementsByTagName('footer');
             for (const footer of footers) {
