@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.9.1
+// @version      0.9.2
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -80,6 +80,8 @@
     } else {
         text = text_en;
     }
+    let host = 'https://weibo.com';
+    if (location.host == 'www.weibo.com') host = 'https://www.weibo.com';
 
     function httpGet(theUrl) {
         let xmlHttp = new XMLHttpRequest();
@@ -210,8 +212,8 @@
                     url,
                     responseType: 'blob',
                     headers: headerFlag ? {
-                        'Referer': 'https://weibo.com/',
-                        'Origin': 'https://weibo.com/'
+                        'Referer': host,
+                        'Origin': host
                     } : null,
                     onprogress: (e) => {
                         // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
@@ -246,8 +248,8 @@
                 url,
                 name,
                 headers: headerFlag ? {
-                    'Referer': 'https://weibo.com/',
-                    'Origin': 'https://weibo.com/'
+                    'Referer': host,
+                    'Origin': host
                 } : null,
                 onprogress: (e) => {
                     // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
@@ -393,7 +395,7 @@
                 const header = article.getElementsByTagName('header')[0];
                 const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
                 let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                const response = httpGet('https://weibo.com/ajax/statuses/show?id=' + postId);
+                const response = httpGet(host + '/ajax/statuses/show?id=' + postId);
                 const resJson = JSON.parse(response);
                 // console.log(resJson);
                 let status = resJson;
@@ -471,7 +473,7 @@
             const mid = cardWrap.getAttribute('mid');
             // console.log(mid);
             if(mid) {
-                const response = httpGet('https://weibo.com/ajax/statuses/show?id=' + mid);
+                const response = httpGet(host + '/ajax/statuses/show?id=' + mid);
                 const resJson = JSON.parse(response);
                 // console.log(resJson);
                 let status = resJson;
