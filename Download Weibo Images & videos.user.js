@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.9.3
+// @version      0.9.4
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -23,6 +23,8 @@
 // @grant        GM_notification
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @connect      weibo.com
+// @connect      www.weibo.com
 // @connect      wx1.sinaimg.cn
 // @connect      wx2.sinaimg.cn
 // @connect      wx3.sinaimg.cn
@@ -94,14 +96,32 @@
     if (location.host == 'www.weibo.com') host = 'https://www.weibo.com';
 
     function httpGet(theUrl) {
-        let xmlHttp = new XMLHttpRequest();
+        /*let xmlHttp = new XMLHttpRequest();
         xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
         xmlHttp.send( null );
-        return xmlHttp.responseText;
+        return xmlHttp.responseText;*/
+        return new Promise(function(resolve, reject) {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: theUrl,
+                responseType: 'json',
+                headers: {
+                    'Referer': host,
+                    'Origin': host
+                },
+                onload: ({ status, response }) => {
+                    // console.log(response);
+                    resolve(response)
+                },
+                onabort: (e) => { resolve(null); },
+                onerror: (e) => { resolve(null); },
+                ontimeout: (e) => { resolve(null); },
+            });
+        });
     }
 
     function downloadError(e, url, name, headerFlag, progress, zipMode = false) {
-        console.log(e, url);
+        // console.log(e, url);
         /*GM_notification({
             title: 'Download error',
             text: 'Error: ' + e.error + '\nUrl: ' + url,
@@ -411,6 +431,7 @@
     }
 
     function addDlBtn(footer) {
+        // console.log('add download button');
         let dlBtnDiv = document.createElement('div');
         dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D';
         let divInDiv = document.createElement('div');
@@ -428,8 +449,7 @@
                 const header = article.getElementsByTagName('header')[0];
                 const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
                 let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                const response = httpGet(host + '/ajax/statuses/show?id=' + postId);
-                const resJson = JSON.parse(response);
+                const resJson = await httpGet(host + '/ajax/statuses/show?id=' + postId);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -490,6 +510,7 @@
     }
 
     function sAddDlBtn(footer) {
+        // console.log('add download button on search');
         const lis = footer.getElementsByTagName('li');
         for (const li of lis) {
             li.style.width = '25%';
@@ -504,7 +525,7 @@
         dlBtn.className = 'woo-like-main toolbar_btn download-button';
         dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
         aInLi.addEventListener('click', function(event) { event.preventDefault(); });
-        dlBtn.addEventListener('click', function(event) {
+        dlBtn.addEventListener('click', async function(event) {
             // console.log('download');
             event.preventDefault();
             const card = this.parentElement.parentElement.parentElement.parentElement;
@@ -513,8 +534,7 @@
             const mid = cardWrap.getAttribute('mid');
             // console.log(mid);
             if(mid) {
-                const response = httpGet(host + '/ajax/statuses/show?id=' + mid);
-                const resJson = JSON.parse(response);
+                const resJson = await httpGet(host + '/ajax/statuses/show?id=' + mid);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -719,6 +739,7 @@
         modal.style.borderColor = 'black';
         modal.style.overflowX = 'hidden';
         modal.style.overflowY = 'auto';
+        modal.style.fontSize = '1rem';
         let titleBar = document.createElement('div');
         titleBar.textContent = text[1];
         titleBar.style.width = '100%';
@@ -743,7 +764,7 @@
         chooseButton.id = 'chooseButton';
         chooseButton.name = 'chooseSetting';
         chooseButton.value = 1;
-        chooseButton.style.marginTop = '0.5rem';
+        chooseButton.style.margin = '0.5rem 0.5rem 0 0.5rem';
         let labelForChooseButton = document.createElement('label');
         labelForChooseButton.htmlFor = 'chooseButton';
         labelForChooseButton.textContent = text[3];
@@ -756,7 +777,7 @@
         chooseEvent.id = 'chooseEvent';
         chooseEvent.name = 'chooseSetting';
         chooseEvent.value = 2;
-        chooseEvent.style.marginTop = '0.5rem';
+        chooseEvent.style.margin = '0.5rem 0.5rem 0 0.5rem';
         if (addDlBtnMode == 2) {
             chooseEvent.checked = true;
         } else {
@@ -785,6 +806,11 @@
         inputFileName.name = 'dlFileName';
         inputFileName.style.marginTop = '0.5rem';
         inputFileName.style.width = 'calc(100% - 1rem)';
+        inputFileName.style.padding = '0.1rem 0.2rem 0.1rem 0.2rem';
+        inputFileName.style.borderStyle = 'solid';
+        inputFileName.style.borderColor = 'gray';
+        inputFileName.style.borderWidth = '0.14rem';
+        inputFileName.style.borderRadius = '0.2rem';
         inputFileName.defaultValue = GM_getValue('dlFileName', '{original}.{ext}');
         question2.appendChild(inputFileName);
         let fileNameExplain = document.createElement('p');
@@ -824,6 +850,11 @@
         inputPackName.name = 'packFileName';
         inputPackName.style.marginTop = '0.5rem';
         inputPackName.style.width = 'calc(100% - 1rem)';
+        inputPackName.style.padding = '0.1rem 0.2rem 0.1rem 0.2rem';
+        inputPackName.style.borderStyle = 'solid';
+        inputPackName.style.borderColor = GM_getValue('zipMode', false) ? 'gray' : 'lightgray';
+        inputPackName.style.borderWidth = '0.14rem';
+        inputPackName.style.borderRadius = '0.2rem';
         inputPackName.defaultValue = GM_getValue('packFileName', '{mblogid}.zip');
         // inputPackName.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
         inputPackName.disabled = GM_getValue('zipMode', false) ? false : true;
@@ -866,6 +897,11 @@
         inputRetweetFileName.name = 'retweetFileName';
         inputRetweetFileName.style.marginTop = '0.5rem';
         inputRetweetFileName.style.width = 'calc(100% - 1rem)';
+        inputRetweetFileName.style.padding = '0.1rem 0.2rem 0.1rem 0.2rem';
+        inputRetweetFileName.style.borderStyle = 'solid';
+        inputRetweetFileName.style.borderColor = 'lightgray';
+        inputRetweetFileName.style.borderWidth = '0.14rem';
+        inputRetweetFileName.style.borderRadius = '0.2rem';
         inputRetweetFileName.defaultValue = GM_getValue('retweetFileName', '{original}.{ext}');
         // inputRetweetFileName.style.display = GM_getValue('retweetMode', false) ? 'block' : 'none';
         inputRetweetFileName.disabled = GM_getValue('retweetMode', false) ? false : true;
@@ -892,6 +928,11 @@
         inputRetweetPackName.name = 'retweetPackFileName';
         inputRetweetPackName.style.marginTop = '0.5rem';
         inputRetweetPackName.style.width = 'calc(100% - 1rem)';
+        inputRetweetPackName.style.padding = '0.1rem 0.2rem 0.1rem 0.2rem';
+        inputRetweetPackName.style.borderStyle = 'solid';
+        inputRetweetPackName.style.borderColor = 'lightgray';
+        inputRetweetPackName.style.borderWidth = '0.14rem';
+        inputRetweetPackName.style.borderRadius = '0.2rem';
         inputRetweetPackName.defaultValue = GM_getValue('retweetPackFileName', '{mblogid}.zip');
         // inputRetweetPackName.style.display = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? 'block' : 'none';
         inputRetweetPackName.disabled = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? false : true;
@@ -910,19 +951,23 @@
                 // retweetFileNameExplain.style.display = 'block';
                 inputRetweetFileName.disabled = false;
                 labelRetweetFileName.style.color = null;
+                inputRetweetFileName.style.borderColor = 'gray';
             } else {
                 // labelRetweetFileName.style.display = 'none';
                 // inputRetweetFileName.style.display = 'none';
                 // retweetFileNameExplain.style.display = 'none';
                 inputRetweetFileName.disabled = true;
                 labelRetweetFileName.style.color = 'gray';
+                inputRetweetFileName.style.borderColor = 'lightgray';
             }
             if (event.currentTarget.checked && inputZipMode.checked) {
                 inputRetweetPackName.disabled = false;
                 labelRetweetPackName.style.color = null;
+                inputRetweetPackName.style.borderColor = 'gray';
             } else {
                 inputRetweetPackName.disabled = true;
                 labelRetweetPackName.style.color = 'gray';
+                inputRetweetPackName.style.borderColor = 'lightgray';
             }
         });
         inputZipMode.addEventListener('change', function(event) {
@@ -932,19 +977,23 @@
                 // filePackExplain.style.display = 'block';
                 inputPackName.disabled = false;
                 labelPackName.style.color = null;
+                inputPackName.style.borderColor = 'gray';
             } else {
                 // labelPackName.style.display = 'none';
                 // inputPackName.style.display = 'none';
                 // filePackExplain.style.display = 'none';
                 inputPackName.disabled = true;
                 labelPackName.style.color = 'gray';
+                inputPackName.style.borderColor = 'lightgray';
             }
             if (event.currentTarget.checked && inputRetweetMode.checked) {
                 inputRetweetPackName.disabled = false;
                 labelRetweetPackName.style.color = null;
+                inputRetweetPackName.style.borderColor = 'gray';
             } else {
                 inputRetweetPackName.disabled = true;
                 labelRetweetPackName.style.color = 'gray';
+                inputRetweetPackName.style.borderColor = 'lightgray';
             }
         });
         modal.appendChild(question4);
