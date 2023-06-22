@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.9.2
+// @version      0.9.3
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -48,14 +48,19 @@
         '确定',
         '下载设置',
         '下载文件名称',
-        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用\n{content} - 博文内容（最多前50个字符）',
+        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用\n{content} - 博文内容（最多前25个字符）',
         '下载队列',
         '重试',
         '关闭',
         '取消',
         '打包下载',
         '打包文件名',
-        '与“下载文件名”规则相同，但{original}、{ext}、{index}除外',
+        '与“下载文件名称”规则相同，但{original}、{ext}、{index}除外',
+        '单独设置转发微博下载文件名称',
+        '转发微博下载文件名称',
+        '除“下载文件名”规则外，额外标签如下：\n{re.mblogid} - 转博mblogid\n{re.username} - 转发博主名称\n{re.userid} - 转发博主ID\n{re.uid} - 转博uid\n{re.content} - 转发博文内容（最多前25个字符）\n{re.YYYY} {re.MM} {re.DD} {re.HH} {re.mm} {re.ss}\n - 原博发布时间的年份、月份、日期、小时、\n分钟、秒，可分开独立使用',
+        '转发微博打包文件名',
+        '与“转发微博下载文件名称”规则相同，但{original}、{ext}、{index}除外',
     ];
     let text_en = [
         'Add Download Buttons',
@@ -66,7 +71,7 @@
         'OK',
         'Download Setting',
         'Download File Name',
-        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - original mblogid\n{uid} - original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post\n{content} - Weibo post content (limited to first 50 characters)',
+        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - Original mblogid\n{uid} - Original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post\n{content} - Original post content (limited to first 25 characters)',
         'Download Queue',
         'Retry',
         'Close',
@@ -74,6 +79,11 @@
         'Pack download files as a ZIP file',
         'ZIP File Name',
         'The same rules as "Download File Name" except {original}, {ext} and {index}',
+        'Different File Name for Retweets',
+        'Retweet Download File Name',
+        'Except the rules for "Download File Name", there are additional tags as below.\n{re.mblogid} - Retweet mblogid\n{re.username} - Retweet user name\n{re.userid} - Retweet user ID\n{re.uid} - Retweet uid\n{re.content} - Retweet post content (limited to first 25 characters)\n{re.YYYY} {re.MM} {re.DD} {re.HH} {re.mm} {re.ss} - "Year", "Month", "Date", "Hour", "Minute", "Second" of the created time of the retweet post',
+        'Retweet Zip File Name',
+        'The same rules as "Retweet Download File Name" except {original}, {ext} and {index}',
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -279,7 +289,7 @@
         }
     }
 
-    function getName(nameSetting, originalName, ext, userName, userId, postId, postUid, index, postTime, content) {
+    function getName(nameSetting, originalName, ext, userName, userId, postId, postUid, index, postTime, content, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetContent) {
         let setName = nameSetting;
         setName = setName.replace('{ext}', ext);
         setName = setName.replace('{original}', originalName);
@@ -288,7 +298,7 @@
         setName = setName.replace('{mblogid}', postId);
         setName = setName.replace('{uid}', postUid);
         setName = setName.replace('{index}', index);
-        setName = setName.replace('{content}', content.substring(0, 50));
+        setName = setName.replace('{content}', content.substring(0, 25));
         let YYYY, MM, DD, HH, mm, ss;
         const postAt = new Date(postTime);
         if (postTime) {
@@ -305,6 +315,29 @@
         setName = setName.replace('{HH}', HH);
         setName = setName.replace('{mm}', mm);
         setName = setName.replace('{ss}', ss);
+        if (retweetPostId && GM_getValue('retweetMode', false)) {
+            setName = setName.replace('{re.mblogid}', retweetPostId);
+            setName = setName.replace('{re.username}', retweetUserName);
+            setName = setName.replace('{re.userid}', retweetUserId);
+            setName = setName.replace('{re.uid}', retweetPostUid);
+            setName = setName.replace('{re.content}', retweetContent.substring(0, 25));
+            let reYYYY, reMM, reDD, reHH, remm, ress;
+            const retweetPostAt = new Date(retweetPostTime);
+            if (retweetPostTime) {
+                reYYYY = retweetPostAt.getFullYear().toString();
+                reMM = (retweetPostAt.getMonth() + 1).toString().padStart(2, '0');
+                reDD = retweetPostAt.getDate().toString().padStart(2, '0');
+                reHH = retweetPostAt.getHours().toString().padStart(2, '0');
+                remm = retweetPostAt.getMinutes().toString().padStart(2, '0');
+                ress = retweetPostAt.getSeconds().toString().padStart(2, '0');
+            }
+            setName = setName.replace('{re.YYYY}', reYYYY);
+            setName = setName.replace('{re.MM}', reMM);
+            setName = setName.replace('{re.DD}', reDD);
+            setName = setName.replace('{re.HH}', reHH);
+            setName = setName.replace('{re.mm}', remm);
+            setName = setName.replace('{re.ss}', ress);
+        }
         return setName.replace(/[<|>|*|"|\/|\|:|?|\n]/g, '_');
     }
 
@@ -334,14 +367,14 @@
         }
     }
 
-    function handleVideo(mediaInfo, padLength, userName, userId, postId, postUid, index, postTime, text) {
+    function handleVideo(mediaInfo, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText) {
         const newList = [];
         let largeVidUrl = mediaInfo.playback_list ? mediaInfo.playback_list[0].play_info.url : mediaInfo.stream_url;
         let vidName = largeVidUrl.split('?')[0];
         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
         let originalName = vidName.split('.')[0];
         let ext = vidName.split('.')[1];
-        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
+        const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
         newList.push({ url: largeVidUrl, name: setName });
         if(mediaInfo.hasOwnProperty('pic_info')) {
             let picUrl = mediaInfo.pic_info.pic_big.url;
@@ -349,19 +382,19 @@
             let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
             let originalName = picName.split('.')[0];
             let ext = picName.split('.')[1];
-            const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
+            const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
             newList.push({url: largePicUrl, name: setName });
         }
         return newList;
     }
 
-    function handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text) {
+    function handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText) {
         let newList = [];
         let largePicUrl = pic.largest.url;
         let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
         let originalName = picName.split('.')[0];
         let ext = picName.split('.')[1];
-        const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
+        const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
         newList.push({ url: largePicUrl, name: setName, headerFlag: true });
         if(pic.hasOwnProperty('video')) {
             let videoUrl = pic.video;
@@ -371,7 +404,7 @@
             // console.log(videoUrl, videoName);
             let originalName = videoName.split('.')[0];
             let ext = videoName.split('.')[1];
-            const setName = getName(GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text);
+            const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
             newList.push({ url: videoUrl, name: setName });
         }
         return newList;
@@ -399,8 +432,15 @@
                 const resJson = JSON.parse(response);
                 // console.log(resJson);
                 let status = resJson;
+                let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
                 if(resJson.hasOwnProperty('retweeted_status')) {
                     status = resJson.retweeted_status;
+                    retweetPostId = resJson.mblogid;
+                    retweetUserName = resJson.user.screen_name;
+                    retweetUserId = resJson.user.idstr;
+                    retweetPostUid = resJson.idstr;
+                    retweetPostTime = resJson.created_at;
+                    retweetText = resJson.text_raw;
                 }
                 postId = status.mblogid;
                 const picInfos = status.pic_infos;
@@ -414,7 +454,7 @@
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
-                        downloadList = downloadList.concat(handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text));
+                        downloadList = downloadList.concat(handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
                 if (picInfos) {
@@ -423,7 +463,7 @@
                     let padLength = Object.entries(picInfos).length.toString().length;
                     for (const [id, pic] of Object.entries(picInfos)) {
                         index += 1;
-                        downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text));
+                        downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
                 if (mixMediaInfo && mixMediaInfo.items) {
@@ -433,13 +473,13 @@
                     for (const [id, media] of Object.entries(mixMediaInfo.items)) {
                         index += 1;
                         if(media.type === 'video') {
-                            downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text));
+                            downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         } else if (media.type === 'pic') {
-                            downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text));
+                            downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         }
                     }
                 }
-                const packName = getName(GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text);
+                const packName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetPackFileName', '{mblogid}.zip') : GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
                 handleDownloadList(downloadList, packName);
             }
         });
@@ -477,8 +517,15 @@
                 const resJson = JSON.parse(response);
                 // console.log(resJson);
                 let status = resJson;
+                let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
                 if(resJson.hasOwnProperty('retweeted_status')) {
                     status = resJson.retweeted_status;
+                    retweetPostId = resJson.mblogid;
+                    retweetUserName = resJson.user.screen_name;
+                    retweetUserId = resJson.user.idstr;
+                    retweetPostUid = resJson.idstr;
+                    retweetPostTime = resJson.created_at;
+                    retweetText = resJson.text_raw;
                 }
                 const postId = status.mblogid;
                 const picInfos = status.pic_infos;
@@ -492,7 +539,7 @@
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
-                        downloadList = downloadList.concat(handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text));
+                        downloadList = downloadList.concat(handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
                 if (picInfos) {
@@ -501,7 +548,7 @@
                     let padLength = Object.entries(picInfos).length.toString().length;
                     for (const [id, pic] of Object.entries(picInfos)) {
                         index += 1;
-                        downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text));
+                        downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
                 if (mixMediaInfo && mixMediaInfo.items) {
@@ -511,13 +558,13 @@
                     for (const [id, media] of Object.entries(mixMediaInfo.items)) {
                         index += 1;
                         if(media.type === 'video') {
-                            downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text));
+                            downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         } else if (media.type === 'pic') {
-                            downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text));
+                            downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         }
                     }
                 }
-                const packName = getName(GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text);
+                const packName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetPackFileName', '{mblogid}.zip') : GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
                 handleDownloadList(downloadList, packName);
             }
         });
@@ -663,12 +710,15 @@
         modal.style.position = 'fixed';
         modal.style.width = '25rem';
         modal.style.height = 'auto';
+        modal.style.maxHeight = '80vh';
         modal.style.zIndex = 600;
         modal.style.backgroundColor = 'white';
         modal.style.borderStyle = 'solid';
         modal.style.borderWidth = '0.2rem';
         modal.style.borderRadius = '0.5rem';
         modal.style.borderColor = 'black';
+        modal.style.overflowX = 'hidden';
+        modal.style.overflowY = 'auto';
         let titleBar = document.createElement('div');
         titleBar.textContent = text[1];
         titleBar.style.width = '100%';
@@ -784,6 +834,97 @@
         filePackExplain.style.marginBottom = '0';
         filePackExplain.style.color = 'gray';
         // filePackExplain.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
+        question3.appendChild(filePackExplain);
+        modal.appendChild(question3);
+        let question4 = document.createElement('p');
+        question4.style.paddingLeft = '2rem';
+        question4.style.paddingRight = '2rem';
+        question4.style.marginTop = '1rem';
+        question4.style.marginBottom = '0';
+        let labelRetweetMode = document.createElement('label');
+        labelRetweetMode.setAttribute('for', 'retweetMode');
+        labelRetweetMode.textContent = text[16];
+        labelRetweetMode.style.display = 'inline-block';
+        labelRetweetMode.style.paddingRight = '0.2rem';
+        question4.appendChild(labelRetweetMode);
+        let inputRetweetMode = document.createElement('input');
+        inputRetweetMode.type = 'checkbox';
+        inputRetweetMode.id = 'retweetMode';
+        inputRetweetMode.checked = GM_getValue('retweetMode', false);
+        question4.appendChild(inputRetweetMode);
+        let labelRetweetFileName = document.createElement('label');
+        labelRetweetFileName.textContent = text[17];
+        labelRetweetFileName.setAttribute('for', 'retweetFileName');
+        labelRetweetFileName.style.display = 'block';
+        labelRetweetFileName.style.marginTop = '0.5rem';
+        labelRetweetFileName.style.color = GM_getValue('retweetMode', false) ? null : 'gray';
+        // labelPackName.style.display = GM_getValue('retweetMode', false) ? 'block' : 'none';
+        question4.appendChild(labelRetweetFileName);
+        let inputRetweetFileName = document.createElement('input');
+        inputRetweetFileName.type = 'text';
+        inputRetweetFileName.id = 'retweetFileName';
+        inputRetweetFileName.name = 'retweetFileName';
+        inputRetweetFileName.style.marginTop = '0.5rem';
+        inputRetweetFileName.style.width = 'calc(100% - 1rem)';
+        inputRetweetFileName.defaultValue = GM_getValue('retweetFileName', '{original}.{ext}');
+        // inputRetweetFileName.style.display = GM_getValue('retweetMode', false) ? 'block' : 'none';
+        inputRetweetFileName.disabled = GM_getValue('retweetMode', false) ? false : true;
+        question4.appendChild(inputRetweetFileName);
+        let retweetFileNameExplain = document.createElement('p');
+        retweetFileNameExplain.textContent = text[18];
+        retweetFileNameExplain.style.marginTop = '0.5rem';
+        retweetFileNameExplain.style.whiteSpace = 'pre';
+        retweetFileNameExplain.style.marginBottom = '0';
+        retweetFileNameExplain.style.color = 'gray';
+        // retweetFileNameExplain.style.display = GM_getValue('retweetMode', false) ? 'block' : 'none';
+        question4.appendChild(retweetFileNameExplain);
+        let labelRetweetPackName = document.createElement('label');
+        labelRetweetPackName.textContent = text[19];
+        labelRetweetPackName.setAttribute('for', 'retweetPackFileName');
+        labelRetweetPackName.style.display = 'block';
+        labelRetweetPackName.style.marginTop = '0.5rem';
+        labelRetweetPackName.style.color = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? null : 'gray';
+        // labelRetweetPackName.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
+        question4.appendChild(labelRetweetPackName);
+        let inputRetweetPackName = document.createElement('input');
+        inputRetweetPackName.type = 'text';
+        inputRetweetPackName.id = 'retweetPackFileName';
+        inputRetweetPackName.name = 'retweetPackFileName';
+        inputRetweetPackName.style.marginTop = '0.5rem';
+        inputRetweetPackName.style.width = 'calc(100% - 1rem)';
+        inputRetweetPackName.defaultValue = GM_getValue('retweetPackFileName', '{mblogid}.zip');
+        // inputRetweetPackName.style.display = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? 'block' : 'none';
+        inputRetweetPackName.disabled = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? false : true;
+        question4.appendChild(inputRetweetPackName);
+        let retweetPackExplain = document.createElement('p');
+        retweetPackExplain.textContent = text[20];
+        retweetPackExplain.style.marginTop = '0.5rem';
+        retweetPackExplain.style.marginBottom = '0';
+        retweetPackExplain.style.color = 'gray';
+        // retweetPackExplain.style.display = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? 'block' : 'none';
+        question4.appendChild(retweetPackExplain);
+        inputRetweetMode.addEventListener('change', function(event) {
+            if (event.currentTarget.checked) {
+                // labelRetweetFileName.style.display = 'block';
+                // inputRetweetFileName.style.display = 'block';
+                // retweetFileNameExplain.style.display = 'block';
+                inputRetweetFileName.disabled = false;
+                labelRetweetFileName.style.color = null;
+            } else {
+                // labelRetweetFileName.style.display = 'none';
+                // inputRetweetFileName.style.display = 'none';
+                // retweetFileNameExplain.style.display = 'none';
+                inputRetweetFileName.disabled = true;
+                labelRetweetFileName.style.color = 'gray';
+            }
+            if (event.currentTarget.checked && inputZipMode.checked) {
+                inputRetweetPackName.disabled = false;
+                labelRetweetPackName.style.color = null;
+            } else {
+                inputRetweetPackName.disabled = true;
+                labelRetweetPackName.style.color = 'gray';
+            }
+        });
         inputZipMode.addEventListener('change', function(event) {
             if (event.currentTarget.checked) {
                 // labelPackName.style.display = 'block';
@@ -798,9 +939,15 @@
                 inputPackName.disabled = true;
                 labelPackName.style.color = 'gray';
             }
+            if (event.currentTarget.checked && inputRetweetMode.checked) {
+                inputRetweetPackName.disabled = false;
+                labelRetweetPackName.style.color = null;
+            } else {
+                inputRetweetPackName.disabled = true;
+                labelRetweetPackName.style.color = 'gray';
+            }
         });
-        question3.appendChild(filePackExplain);
-        modal.appendChild(question3);
+        modal.appendChild(question4);
         let okButton = document.createElement('button');
         okButton.textContent = text[5];
         okButton.style.paddingTop = '0.5rem';
@@ -845,8 +992,11 @@
                 addEventListener();
             }
             GM_setValue('dlFileName', document.getElementById('dlFileName').value);
+            GM_setValue('retweetMode', document.getElementById('retweetMode').checked);
+            GM_setValue('retweetFileName', document.getElementById('retweetFileName').value);
             GM_setValue('zipMode', document.getElementById('zipMode').checked);
             GM_setValue('packFileName', document.getElementById('packFileName').value);
+            GM_setValue('retweetPackFileName', document.getElementById('retweetPackFileName').value);
             document.body.removeChild(modal);
             document.body.removeChild(bg);
             window.removeEventListener('resize', resizeWindow);
