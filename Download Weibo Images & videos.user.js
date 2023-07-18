@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.9.4
+// @version      0.9.5
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -433,9 +433,9 @@
     function addDlBtn(footer) {
         // console.log('add download button');
         let dlBtnDiv = document.createElement('div');
-        dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D';
+        dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V';
         let divInDiv = document.createElement('div');
-        divInDiv.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_likebox_1rLfZ';
+        divInDiv.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_like_20yPI toolbar_likebox_1rLfZ toolbar_wrap_np6Ug';
         let dlBtn = document.createElement('button');
         dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz download-button';
         dlBtn.setAttribute('tabindex', '0');
@@ -443,7 +443,7 @@
         dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
         dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
-            const article = this.parentElement.parentElement.parentElement.parentElement.parentElement;
+            const article = this.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement;
             if(article.tagName.toLowerCase() == 'article') {
                 // let contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
                 const header = article.getElementsByTagName('header')[0];
@@ -505,7 +505,7 @@
         });
         divInDiv.appendChild(dlBtn);
         dlBtnDiv.appendChild(divInDiv);
-        footer.firstChild.appendChild(dlBtnDiv);
+        footer.firstChild.firstChild.firstChild.appendChild(dlBtnDiv);
         // console.log('added download button');
     }
 
