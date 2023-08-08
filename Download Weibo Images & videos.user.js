@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.9.5
+// @version      0.9.6
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -395,7 +395,7 @@
         let originalName = vidName.split('.')[0];
         let ext = vidName.split('.')[1];
         const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
-        newList.push({ url: largeVidUrl, name: setName });
+        newList.push({ url: largeVidUrl, name: setName, headerFlag: true });
         if(mediaInfo.hasOwnProperty('pic_info')) {
             let picUrl = mediaInfo.pic_info.pic_big.url;
             let largePicUrl = picUrl.replace('/orj480/', '/large/');
@@ -403,7 +403,7 @@
             let originalName = picName.split('.')[0];
             let ext = picName.split('.')[1];
             const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
-            newList.push({url: largePicUrl, name: setName });
+            newList.push({url: largePicUrl, name: setName, headerFlag: true });
         }
         return newList;
     }
@@ -425,7 +425,7 @@
             let originalName = videoName.split('.')[0];
             let ext = videoName.split('.')[1];
             const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
-            newList.push({ url: videoUrl, name: setName });
+            newList.push({ url: videoUrl, name: setName, headerFlag: true });
         }
         return newList;
     }
