@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.9.6
+// @version      0.9.7
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -473,7 +473,7 @@
                 let downloadList = [];
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
-                    if(resJson.hasOwnProperty('page_info')) {
+                    if(resJson.page_info?.media_info) {
                         downloadList = downloadList.concat(handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
