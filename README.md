@@ -10,6 +10,7 @@ A Tampermonkey script to download weibo images and videos.
 - Support on 's.weibo.com'
 - Display download progress and queue at the bottom left corner of the page
 - Support packing all download files as a ZIP file
+- Support download by Aria2c
 
 ## Screenshot:
 ![1.jpg](res/1.JPG?raw=true)
@@ -36,6 +37,9 @@ Or Install manually:
 ## Tutorial:
 1. First time, this setting would show up. Choose any one you like.\
    ![2.jpg](res/2.JPG?raw=true)
-3. Tampermonkey Advance Settings. Set download mode to 'Native' and add .mov to download whitelist.\
+2. Tampermonkey Advance Settings. Set download mode to 'Native' and add .mov to download whitelist.\
    ![4.png](res/4.png?raw=true)
    ![5.png](res/5.png?raw=true)
+3. Add RPC host to XHR white list.\
+   ![6.png](res/6.png?raw=true)
+   ![7.png](res/7.png?raw=true)
