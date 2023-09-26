@@ -35,9 +35,6 @@ Or Install manually:
 
 ## Tutorial:
 1. First time, this setting would show up. Choose any one you like.\
-   ![3.png](res/3.PNG?raw=true)
-2. If you choose click a button to add download buttons, you would find that button on the left of the page.\
-   If you would like to change the way to add download buttons, just click the setting button on the left of the page.\
    ![2.jpg](res/2.JPG?raw=true)
 3. Tampermonkey Advance Settings. Set download mode to 'Native' and add .mov to download whitelist.\
    ![4.png](res/4.png?raw=true)
