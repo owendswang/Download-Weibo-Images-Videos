@@ -566,7 +566,7 @@
                 }
                 if (mixMediaInfo && mixMediaInfo.items) {
                     // console.log('mix media');
-                    console.log(mixMediaInfo.items);
+                    // console.log(mixMediaInfo.items);
                     let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
                     const media = Object.entries(mixMediaInfo.items)[idx][1];
                     if(media.type === 'video') {
