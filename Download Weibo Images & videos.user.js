@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.0.1
+// @version      1.1.0
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -31,6 +31,8 @@
 // @connect      wx4.sinaimg.cn
 // @connect      g.us.sinaimg.cn
 // @connect      f.video.weibocdn.com
+// @connect      f.video.weibocdn.com
+// @connect      localhost
 // @namespace    http://tampermonkey.net/
 // @run-at       document-end
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.9.1/jszip.min.js
@@ -63,6 +65,10 @@
         '除“下载文件名”规则外，额外标签如下：\n{re.mblogid} - 转博mblogid\n{re.username} - 转发博主名称\n{re.userid} - 转发博主ID\n{re.uid} - 转博uid\n{re.content} - 转发博文内容（最多前25个字符）\n{re.YYYY} {re.MM} {re.DD} {re.HH} {re.mm} {re.ss}\n - 原博发布时间的年份、月份、日期、小时、\n分钟、秒，可分开独立使用',
         '转发微博打包文件名',
         '与“转发微博下载文件名称”规则相同，但{original}、{ext}、{index}除外',
+        '使用Aria2c远程下载',
+        'RPC接口地址',
+        '使用此方式下载，无法使用打包功能，无法在页面右下角显示下载进度和结果。',
+        '如果接口地址不是localhost，需手动将地址添加到XHR白名单。'
     ];
     let text_en = [
         'Add Download Buttons',
@@ -86,91 +92,15 @@
         'Except the rules for "Download File Name", there are additional tags as below.\n{re.mblogid} - Retweet mblogid\n{re.username} - Retweet user name\n{re.userid} - Retweet user ID\n{re.uid} - Retweet uid\n{re.content} - Retweet post content (limited to first 25 characters)\n{re.YYYY} {re.MM} {re.DD} {re.HH} {re.mm} {re.ss} - "Year", "Month", "Date", "Hour", "Minute", "Second" of the created time of the retweet post',
         'Retweet Zip File Name',
         'The same rules as "Retweet Download File Name" except {original}, {ext} and {index}',
+        'Use Aria2c remote download API',
+        'RPC Url',
+        'In this mode, You would not be able to download in ZIP mode and to observe download progress and result.',
+        'If it\'s not \'localhost\', you would have to add it to \'XHR white list\'.'
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
     } else {
         text = text_en;
-    }
-    let host = 'https://weibo.com';
-    if (location.host == 'www.weibo.com') host = 'https://www.weibo.com';
-
-    function httpGet(theUrl) {
-        /*let xmlHttp = new XMLHttpRequest();
-        xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
-        xmlHttp.send( null );
-        return xmlHttp.responseText;*/
-        return new Promise(function(resolve, reject) {
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url: theUrl,
-                responseType: 'json',
-                headers: {
-                    'Referer': host,
-                    'Origin': host
-                },
-                onload: ({ status, response }) => {
-                    // console.log(response);
-                    resolve(response)
-                },
-                onabort: (e) => { resolve(null); },
-                onerror: (e) => { resolve(null); },
-                ontimeout: (e) => { resolve(null); },
-            });
-        });
-    }
-
-    function downloadError(e, url, name, headerFlag, progress, zipMode = false) {
-        // console.log(e, url);
-        /*GM_notification({
-            title: 'Download error',
-            text: 'Error: ' + e.error + '\nUrl: ' + url,
-            silent: true,
-            timeout: 3,
-        });*/
-        progress.style.background = 'red';
-        progress.firstChild.textContent = name + ' [' + (e.error || 'Unknown') + ']';
-        progress.firstChild.style.color = 'yellow';
-        progress.firstChild.style.mixBlendMode = 'unset';
-        if (!zipMode) {
-            let progressRetryBtn = document.createElement('button');
-            progressRetryBtn.style.border = 'unset';
-            progressRetryBtn.style.background = 'unset';
-            progressRetryBtn.style.color = 'yellow';
-            progressRetryBtn.style.position = 'absolute';
-            progressRetryBtn.style.right = '1.2rem';
-            progressRetryBtn.style.top = '0.05rem';
-            progressRetryBtn.style.fontSize = '1rem';
-            progressRetryBtn.style.lineHeight = '1rem';
-            progressRetryBtn.style.cursor = 'pointer';
-            progressRetryBtn.style.letterSpacing = '-0.2rem';
-            progressRetryBtn.textContent = '⤤⤦';
-            progressRetryBtn.title = text[10];
-            progressRetryBtn.onmouseover = function(e){
-                this.style.color = 'white';
-            }
-            progressRetryBtn.onmouseout = function(e){
-                this.style.color = 'yellow';
-            }
-            progressRetryBtn.onclick = function(e) {
-                this.parentNode.remove();
-                downloadWrapper(url, name, headerFlag);
-            }
-            progress.insertBefore(progressRetryBtn, progress.lastChild);
-        }
-        progress.lastChild.title = text[11];
-        progress.lastChild.style.color = 'yellow';
-        progress.lastChild.onmouseover = function(e){
-            this.style.color = 'white';
-        };
-        progress.lastChild.onmouseout = function(e){
-            this.style.color = 'yellow';
-        };
-        progress.lastChild.onclick = function(e) {
-            this.parentNode.remove();
-            if(progress.parent.childElementCount == 1) progress.parent.firstChild.style.display = 'none';
-        };
-        // setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000);
     }
 
     let downloadQueueCard = document.createElement('div');
@@ -230,6 +160,130 @@
     progressBar.appendChild(progressCloseBtn);
     // downloadQueueCard.appendChild(progressBar);
 
+    function send2Aria2c(url, fileName, headerFlag) {
+        // console.log(downloadUrl);
+        return new Promise(function(resolve, reject) {
+            let header = [ 'User-Agent: ' + window.navigator.userAgent ];
+            if (headerFlag) {
+                header.push('Referer: https://' + location.host);
+                header.push('Origin: https://' + location.host);
+            }
+            downloadQueueTitle.style.display = 'block';
+            let progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
+            progress.firstChild.textContent = fileName;
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: GM_getValue('ariaRpcUrl','http://localhost:6800/jsonrpc'),
+                data: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 'weibo',
+                    method: 'aria2.addUri',
+                    params: [ [ url ], { header, out: fileName } ],
+                }),
+                headers: {"Content-Type": "application/json"},
+                onload: function(response) {
+                    // console.log(response.responseText);
+                    progress.style.background = 'green';
+                    const timeout = setTimeout(() => {
+                        progress.remove();
+                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    }, 1000);
+                    progress.lastChild.onclick = function(e) {
+                        clearTimeout(timeout);
+                        this.parentNode.remove();
+                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    }
+                    resolve(response);
+                },
+                onabort: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
+                onerror: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
+                ontimeout: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
+            });
+        });
+    }
+
+    function httpGet(theUrl) {
+        /*let xmlHttp = new XMLHttpRequest();
+        xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
+        xmlHttp.send( null );
+        return xmlHttp.responseText;*/
+        return new Promise(function(resolve, reject) {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: theUrl,
+                responseType: 'json',
+                headers: {
+                    'Referer': 'https://' + location.host,
+                    'Origin': 'https://' + location.host
+                },
+                onload: ({ status, response }) => {
+                    // console.log(response);
+                    resolve(response)
+                },
+                onabort: function(e) { resolve(null); },
+                onerror: function(e) { resolve(null); },
+                ontimeout: function(e) { resolve(null); },
+            });
+        });
+    }
+
+    function downloadError(e, url, name, headerFlag, progress, zipMode = false, ariaMode = false) {
+        // console.log(e, url);
+        /*GM_notification({
+            title: 'Download error',
+            text: 'Error: ' + e.error + '\nUrl: ' + url,
+            silent: true,
+            timeout: 3,
+        });*/
+        progress.style.background = 'red';
+        progress.firstChild.textContent = name + ' [' + (e.error || 'Unknown') + ']';
+        progress.firstChild.style.color = 'yellow';
+        progress.firstChild.style.mixBlendMode = 'unset';
+        if (!zipMode) {
+            let progressRetryBtn = document.createElement('button');
+            progressRetryBtn.style.border = 'unset';
+            progressRetryBtn.style.background = 'unset';
+            progressRetryBtn.style.color = 'yellow';
+            progressRetryBtn.style.position = 'absolute';
+            progressRetryBtn.style.right = '1.2rem';
+            progressRetryBtn.style.top = '0.05rem';
+            progressRetryBtn.style.fontSize = '1rem';
+            progressRetryBtn.style.lineHeight = '1rem';
+            progressRetryBtn.style.cursor = 'pointer';
+            progressRetryBtn.style.letterSpacing = '-0.2rem';
+            progressRetryBtn.textContent = '⤤⤦';
+            progressRetryBtn.title = text[10];
+            progressRetryBtn.onmouseover = function(e){
+                this.style.color = 'white';
+            }
+            progressRetryBtn.onmouseout = function(e){
+                this.style.color = 'yellow';
+            }
+            progressRetryBtn.onclick = function(e) {
+                this.parentNode.remove();
+                if (ariaMode) {
+                    send2Aria2c(url, name, headerFlag);
+                } else {
+                    downloadWrapper(url, name, headerFlag);
+                }
+            }
+            progress.insertBefore(progressRetryBtn, progress.lastChild);
+        }
+        progress.lastChild.title = text[11];
+        progress.lastChild.style.color = 'yellow';
+        progress.lastChild.onmouseover = function(e){
+            this.style.color = 'white';
+        };
+        progress.lastChild.onmouseout = function(e){
+            this.style.color = 'yellow';
+        };
+        progress.lastChild.onclick = function(e) {
+            this.parentNode.remove();
+            if(progress.parent.childElementCount == 1) progress.parent.firstChild.style.display = 'none';
+        };
+        // setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000);
+    }
+
     function downloadWrapper(url, name, headerFlag = false, zipMode = false) {
         // console.log(url);
         downloadQueueTitle.style.display = 'block';
@@ -242,8 +296,8 @@
                     url,
                     responseType: 'blob',
                     headers: headerFlag ? {
-                        'Referer': host,
-                        'Origin': host
+                        'Referer': 'https://' + location.host,
+                        'Origin': 'https://' + location.host
                     } : null,
                     onprogress: (e) => {
                         // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
@@ -263,9 +317,9 @@
                         }
                         resolve(response);
                     },
-                    onabort: (e) => { downloadError(e, url, name, headerFlag, progress); resolve(null); },
-                    onerror: (e) => { downloadError(e, url, name, headerFlag, progress); resolve(null); },
-                    ontimeout: (e) => { downloadError(e, url, name, headerFlag, progress); resolve(null); },
+                    onabort: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
+                    onerror: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
+                    ontimeout: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
                 });
                 progress.lastChild.onclick = function(e) {
                     download.abort();
@@ -278,8 +332,8 @@
                 url,
                 name,
                 headers: headerFlag ? {
-                    'Referer': host,
-                    'Origin': host
+                    'Referer': 'https://' + location.host,
+                    'Origin': 'https://' + location.host
                 } : null,
                 onprogress: (e) => {
                     // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
@@ -362,7 +416,11 @@
     }
 
     function handleDownloadList(downloadList, packName) {
-        if (GM_getValue('zipMode', false)) {
+        if (GM_getValue('ariaMode', false)) {
+            for (const item of downloadList) {
+                send2Aria2c(item.url, item.name, item.headerFlag);
+            }
+        } else if (GM_getValue('zipMode', false)) {
             let zip = new JSZip();
             // console.log('zip', zip);
             let promises = downloadList.map(async function(ele, idx) {
@@ -450,7 +508,7 @@
                 const header = article.getElementsByTagName('header')[0];
                 const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
                 let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                const resJson = await httpGet(host + '/ajax/statuses/show?id=' + postId);
+                const resJson = await httpGet('https://' + location.host + '/ajax/statuses/show?id=' + postId);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -535,7 +593,7 @@
                 const header = article.getElementsByTagName('header')[0];
                 const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
                 let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                const resJson = await httpGet(host + '/ajax/statuses/show?id=' + postId);
+                const resJson = await httpGet('https://' + location.host + '/ajax/statuses/show?id=' + postId);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -607,7 +665,7 @@
             const mid = cardWrap.getAttribute('mid');
             // console.log(mid);
             if(mid) {
-                const resJson = await httpGet(host + '/ajax/statuses/show?id=' + mid);
+                const resJson = await httpGet('https://' + location.host + '/ajax/statuses/show?id=' + mid);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -935,18 +993,20 @@
         labelZipMode.textContent = text[13];
         labelZipMode.style.display = 'inline-block';
         labelZipMode.style.paddingRight = '0.2rem';
+        labelZipMode.style.color = GM_getValue('ariaMode', false) ? 'gray' : null;
         question3.appendChild(labelZipMode);
         let inputZipMode = document.createElement('input');
         inputZipMode.type = 'checkbox';
         inputZipMode.id = 'zipMode';
         inputZipMode.checked = GM_getValue('zipMode', false);
+        inputZipMode.disabled = GM_getValue('ariaMode', false);
         question3.appendChild(inputZipMode);
         let labelPackName = document.createElement('label');
         labelPackName.textContent = text[14];
         labelPackName.setAttribute('for', 'packFileName');
         labelPackName.style.display = 'block';
         labelPackName.style.marginTop = '0.5rem';
-        labelPackName.style.color = GM_getValue('zipMode', false) ? null : 'gray';
+        labelPackName.style.color = (GM_getValue('zipMode', false) && !GM_getValue('ariaMode', false)) ? null : 'gray';
         // labelPackName.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
         question3.appendChild(labelPackName);
         let inputPackName = document.createElement('input');
@@ -957,12 +1017,12 @@
         inputPackName.style.width = 'calc(100% - 1rem)';
         inputPackName.style.padding = '0.1rem 0.2rem 0.1rem 0.2rem';
         inputPackName.style.borderStyle = 'solid';
-        inputPackName.style.borderColor = GM_getValue('zipMode', false) ? 'gray' : 'lightgray';
+        inputPackName.style.borderColor = (GM_getValue('zipMode', false) && !GM_getValue('ariaMode', false)) ? 'gray' : 'lightgray';
         inputPackName.style.borderWidth = '0.14rem';
         inputPackName.style.borderRadius = '0.2rem';
         inputPackName.defaultValue = GM_getValue('packFileName', '{mblogid}.zip');
         // inputPackName.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
-        inputPackName.disabled = GM_getValue('zipMode', false) ? false : true;
+        inputPackName.disabled = (GM_getValue('zipMode', false) && !GM_getValue('ariaMode', false)) ? false : true;
         question3.appendChild(inputPackName);
         let filePackExplain = document.createElement('p');
         filePackExplain.textContent = text[15];
@@ -1024,7 +1084,7 @@
         labelRetweetPackName.setAttribute('for', 'retweetPackFileName');
         labelRetweetPackName.style.display = 'block';
         labelRetweetPackName.style.marginTop = '0.5rem';
-        labelRetweetPackName.style.color = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? null : 'gray';
+        labelRetweetPackName.style.color = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false) && !GM_getValue('ariaMode', false)) ? null : 'gray';
         // labelRetweetPackName.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
         question4.appendChild(labelRetweetPackName);
         let inputRetweetPackName = document.createElement('input');
@@ -1039,16 +1099,68 @@
         inputRetweetPackName.style.borderWidth = '0.14rem';
         inputRetweetPackName.style.borderRadius = '0.2rem';
         inputRetweetPackName.defaultValue = GM_getValue('retweetPackFileName', '{mblogid}.zip');
-        // inputRetweetPackName.style.display = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? 'block' : 'none';
-        inputRetweetPackName.disabled = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? false : true;
+        // inputRetweetPackName.style.display = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false) && !GM_getValue('ariaMode', false)) ? 'block' : 'none';
+        inputRetweetPackName.disabled = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false) && !GM_getValue('ariaMode', false)) ? false : true;
         question4.appendChild(inputRetweetPackName);
         let retweetPackExplain = document.createElement('p');
         retweetPackExplain.textContent = text[20];
         retweetPackExplain.style.marginTop = '0.5rem';
         retweetPackExplain.style.marginBottom = '0';
         retweetPackExplain.style.color = 'gray';
-        // retweetPackExplain.style.display = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false)) ? 'block' : 'none';
+        // retweetPackExplain.style.display = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false) && !GM_getValue('ariaMode', false)) ? 'block' : 'none';
         question4.appendChild(retweetPackExplain);
+        modal.appendChild(question4);
+        let question5 = document.createElement('p');
+        question5.style.paddingLeft = '2rem';
+        question5.style.paddingRight = '2rem';
+        question5.style.marginTop = '1rem';
+        question5.style.marginBottom = '0';
+        let labelAriaMode = document.createElement('label');
+        labelAriaMode.setAttribute('for', 'ariaMode');
+        labelAriaMode.textContent = text[21];
+        labelAriaMode.style.display = 'inline-block';
+        labelAriaMode.style.paddingRight = '0.2rem';
+        question5.appendChild(labelAriaMode);
+        let inputAriaMode = document.createElement('input');
+        inputAriaMode.type = 'checkbox';
+        inputAriaMode.id = 'ariaMode';
+        inputAriaMode.checked = GM_getValue('ariaMode', false);
+        question5.appendChild(inputAriaMode);
+        let ariaModeExplain = document.createElement('p');
+        ariaModeExplain.textContent = text[23];
+        ariaModeExplain.style.marginTop = '0.5rem';
+        ariaModeExplain.style.marginBottom = '0';
+        ariaModeExplain.style.color = 'gray';
+        question5.appendChild(ariaModeExplain);
+        let labelAriaRpcUrl = document.createElement('label');
+        labelAriaRpcUrl.textContent = text[22];
+        labelAriaRpcUrl.setAttribute('for', 'ariaRpcUrl');
+        labelAriaRpcUrl.style.display = 'block';
+        labelAriaRpcUrl.style.marginTop = '0.5rem';
+        labelAriaRpcUrl.style.color = GM_getValue('ariaMode', false) ? null : 'gray';
+        question5.appendChild(labelAriaRpcUrl);
+        let inputAriaRpcUrl = document.createElement('input');
+        inputAriaRpcUrl.type = 'text';
+        inputAriaRpcUrl.id = 'ariaRpcUrl';
+        inputAriaRpcUrl.name = 'ariaRpcUrl';
+        inputAriaRpcUrl.style.marginTop = '0.5rem';
+        inputAriaRpcUrl.style.width = 'calc(100% - 1rem)';
+        inputAriaRpcUrl.style.padding = '0.1rem 0.2rem 0.1rem 0.2rem';
+        inputAriaRpcUrl.style.borderStyle = 'solid';
+        inputAriaRpcUrl.style.borderColor = 'lightgray';
+        inputAriaRpcUrl.style.borderWidth = '0.14rem';
+        inputAriaRpcUrl.style.borderRadius = '0.2rem';
+        inputAriaRpcUrl.defaultValue = GM_getValue('ariaRpcUrl', 'http://localhost:6800/jsonrpc');
+        // inputAriaRpcUrl.style.display = GM_getValue('ariaMode', false) ? 'block' : 'none';
+        inputAriaRpcUrl.disabled = GM_getValue('ariaMode', false) ? false : true;
+        question5.appendChild(inputAriaRpcUrl);
+        let inputAriaExplain = document.createElement('p');
+        inputAriaExplain.textContent = text[24];
+        inputAriaExplain.style.marginTop = '0.5rem';
+        inputAriaExplain.style.marginBottom = '0';
+        inputAriaExplain.style.color = 'gray';
+        question5.appendChild(inputAriaExplain);
+        modal.appendChild(question5);
         inputRetweetMode.addEventListener('change', function(event) {
             if (event.currentTarget.checked) {
                 // labelRetweetFileName.style.display = 'block';
@@ -1065,7 +1177,7 @@
                 labelRetweetFileName.style.color = 'gray';
                 inputRetweetFileName.style.borderColor = 'lightgray';
             }
-            if (event.currentTarget.checked && inputZipMode.checked) {
+            if (event.currentTarget.checked && inputZipMode.checked && !inputAriaMode.checked) {
                 inputRetweetPackName.disabled = false;
                 labelRetweetPackName.style.color = null;
                 inputRetweetPackName.style.borderColor = 'gray';
@@ -1101,7 +1213,43 @@
                 inputRetweetPackName.style.borderColor = 'lightgray';
             }
         });
-        modal.appendChild(question4);
+        inputAriaMode.addEventListener('change', function(event) {
+            if (event.currentTarget.checked) {
+                // labelAriaRpcUrl.style.display = 'block';
+                // inputAriaRpcUrl.style.display = 'block';
+                inputAriaRpcUrl.disabled = false;
+                labelAriaRpcUrl.style.color = null;
+                inputAriaRpcUrl.style.borderColor = 'gray';
+                inputZipMode.disabled = true;
+                labelZipMode.style.color = 'gray';
+            } else {
+                // labelAriaRpcUrl.style.display = 'none';
+                // inputAriaRpcUrl.style.display = 'none';
+                inputAriaRpcUrl.disabled = true;
+                labelAriaRpcUrl.style.color = 'gray';
+                inputAriaRpcUrl.style.borderColor = 'lightgray';
+                inputZipMode.disabled = false;
+                labelZipMode.style.color = null;
+            }
+            if (!event.currentTarget.checked && inputZipMode.checked) {
+                inputPackName.disabled = false;
+                labelPackName.style.color = null;
+                inputPackName.style.borderColor = 'gray';
+            } else {
+                inputPackName.disabled = true;
+                labelPackName.style.color = 'gray';
+                inputPackName.style.borderColor = 'lightgray';
+            }
+            if (!event.currentTarget.checked && inputZipMode.checked && inputRetweetMode.checked) {
+                inputRetweetPackName.disabled = false;
+                labelRetweetPackName.style.color = null;
+                inputRetweetPackName.style.borderColor = 'gray';
+            } else {
+                inputRetweetPackName.disabled = true;
+                labelRetweetPackName.style.color = 'gray';
+                inputRetweetPackName.style.borderColor = 'lightgray';
+            }
+        });
         let okButton = document.createElement('button');
         okButton.textContent = text[5];
         okButton.style.paddingTop = '0.5rem';
@@ -1151,6 +1299,8 @@
             GM_setValue('zipMode', document.getElementById('zipMode').checked);
             GM_setValue('packFileName', document.getElementById('packFileName').value);
             GM_setValue('retweetPackFileName', document.getElementById('retweetPackFileName').value);
+            GM_setValue('ariaMode', document.getElementById('ariaMode').checked);
+            GM_setValue('ariaRpcUrl', document.getElementById('ariaRpcUrl').value);
             document.body.removeChild(modal);
             document.body.removeChild(bg);
             window.removeEventListener('resize', resizeWindow);
