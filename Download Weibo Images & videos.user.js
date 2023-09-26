@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      0.9.7
+// @version      1.0.0
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -440,11 +440,12 @@
         dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz download-button';
         dlBtn.setAttribute('tabindex', '0');
         dlBtn.setAttribute('title', '下载');
-        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
+        // dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><i class="woo-font woo-font--imgSave woo-like-icon"></i></span><span class="woo-like-count">下载</span>';
         dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
-            const article = this.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement.parentElement;
-            if(article.tagName.toLowerCase() == 'article') {
+            const article = this.closest('article.woo-panel-main');
+            if(article) {
                 // let contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
                 const header = article.getElementsByTagName('header')[0];
                 const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
@@ -509,6 +510,77 @@
         // console.log('added download button');
     }
 
+    function addSingleDlBtn(img, idx = 0) {
+        // console.log(img);
+        const imgCtn = img.parentElement;
+        const dlBtn = document.createElement('div');
+        dlBtn.style.position = 'absolute';
+        dlBtn.style.bottom = '0';
+        dlBtn.style.left = '0';
+        dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
+        dlBtn.style.padding = '0.3rem';
+        dlBtn.style.borderRadius = '0 8px';
+        dlBtn.style.width = '1rem';
+        dlBtn.style.height = '1rem';
+        dlBtn.style.cursor = 'pointer';
+        dlBtn.style.zIndex = '11';
+        dlBtn.innerHTML = '<i class="woo-font woo-font--imgSave"></i>';
+        dlBtn.addEventListener('mouseenter', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.8)'; });
+        dlBtn.addEventListener('mouseleave', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.4)'; });
+        dlBtn.addEventListener('click', async function(event) {
+            event.stopPropagation();
+            const article = this.closest('article.woo-panel-main');
+            if(article) {
+                // let contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
+                const header = article.getElementsByTagName('header')[0];
+                const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
+                let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
+                const resJson = await httpGet(host + '/ajax/statuses/show?id=' + postId);
+                // console.log(resJson);
+                let status = resJson;
+                let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
+                if(resJson.hasOwnProperty('retweeted_status')) {
+                    status = resJson.retweeted_status;
+                    retweetPostId = resJson.mblogid;
+                    retweetUserName = resJson.user.screen_name;
+                    retweetUserId = resJson.user.idstr;
+                    retweetPostUid = resJson.idstr;
+                    retweetPostTime = resJson.created_at;
+                    retweetText = resJson.text_raw;
+                }
+                postId = status.mblogid;
+                const picInfos = status.pic_infos;
+                const mixMediaInfo = status.mix_media_info;
+                const userName = status.user.screen_name;
+                const userId = status.user.idstr;
+                const postUid = status.idstr;
+                const postTime = status.created_at;
+                const text = status.text_raw;
+                let downloadList = [];
+                if (picInfos) {
+                    // console.log('download images');
+                    let padLength = Object.entries(picInfos).length.toString().length;
+                    // console.log(idx, picInfos);
+                    const pic = Object.entries(picInfos)[idx][1];
+                    downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, idx, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                }
+                if (mixMediaInfo && mixMediaInfo.items) {
+                    // console.log('mix media');
+                    let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
+                    const media = Object.entries(mixMediaInfo.items)[idx][1];
+                    if(media.type === 'video') {
+                        downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, idx, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                    } else if (media.type === 'pic') {
+                        downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, idx, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                    }
+                }
+                const packName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetPackFileName', '{mblogid}.zip') : GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
+                handleDownloadList(downloadList, packName);
+            }
+        });
+        imgCtn.appendChild(dlBtn);
+    }
+/*
     function sAddDlBtn(footer) {
         // console.log('add download button on search');
         const lis = footer.getElementsByTagName('li');
@@ -595,13 +667,6 @@
     }
 
     function bodyMouseOver(event) {
-        let svg = document.getElementById('__SVG_SPRITE_NODE__');
-        let symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
-        symbol.id = 'woo_svg_download';
-        symbol.setAttribute('viewBox', '0 0 100 100');
-        symbol.innerHTML = '<path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path><path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path>';
-        svg.appendChild(symbol);
-
         if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
             // let arts = document.getElementsByTagName('article');
             const footers = document.getElementsByTagName('footer');
@@ -665,7 +730,46 @@
             }
         }
     }
-
+*/
+    function handleCard(card) {
+        // console.log(card);
+        const footer = card.querySelectorAll('footer')[1] || card.querySelector('footer');
+        const imgs = card.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3');
+        // console.log(imgs);
+        if (footer) {
+            if (footer.getElementsByClassName('download-button').length > 0) {
+                // console.log('already added download button');
+            } else {
+                // console.log(footer.parentElement);
+                let added = false;
+                if (imgs.length > 0) {
+                    addDlBtn(footer);
+                    added = true;
+                    if (imgs.length > 1) {
+                        for (const [ idx, img ] of Object.entries(imgs)) {
+                            if (img.parentElement.getElementsByClassName('download-single-button').length === 0) {
+                                if (img.className.includes('picture-viewer_pic_37YQ3')) {
+                                    const previews = card.querySelectorAll('div.picture-viewer_preview_2wOSq');
+                                    for (const [ index, preview ] of Object.entries(previews)) {
+                                        if (preview.className.includes('picture-viewer_cur_anUEY')) {
+                                            addSingleDlBtn(img, parseInt(index) + 1);
+                                        }
+                                    }
+                                } else {
+                                    addSingleDlBtn(img, parseInt(idx) + 1);
+                                }
+                            }
+                        }
+                    }
+                }
+                let videos = card.getElementsByTagName('video');
+                if(videos.length > 0 && added == false) {
+                    addDlBtn(footer);
+                }
+            }
+        }
+    }
+/*
     let startButton = document.createElement('button');
     startButton.textContent = text[0];
     startButton.id = 'startButton';
@@ -713,8 +817,8 @@
             document.body.removeChild(startButton);
         }
     }
-
-    let addDlBtnMode = GM_getValue('addDlBtnMode', 0);
+*/
+    // let addDlBtnMode = GM_getValue('addDlBtnMode', 0);
 
     function showModal(event) {
         // console.log(addDlBtnMode);
@@ -753,7 +857,7 @@
         titleBar.style.borderTopLeftRadius = '0.3rem';
         titleBar.style.borderTopRightRadius = '0.3rem';
         modal.appendChild(titleBar);
-        let question1 = document.createElement('p');
+        /*let question1 = document.createElement('p');
         question1.textContent = text[2];
         question1.style.paddingLeft = '2rem';
         question1.style.paddingRight = '2rem';
@@ -790,7 +894,7 @@
         divForChooseEvent.appendChild(chooseEvent);
         divForChooseEvent.appendChild(labelForChooseEvent);
         question1.appendChild(divForChooseEvent);
-        modal.appendChild(question1);
+        modal.appendChild(question1);*/
         let question2 = document.createElement('p');
         question2.style.paddingLeft = '2rem';
         question2.style.paddingRight = '2rem';
@@ -1031,7 +1135,7 @@
             modal.style.left = (( document.documentElement.clientWidth - modal.offsetWidth ) / 2).toString() + 'px';
         }
         okButton.addEventListener('click', function(event) {
-            if(document.getElementById('chooseButton').checked == true) {
+            /*if(document.getElementById('chooseButton').checked == true) {
                 GM_setValue('addDlBtnMode', 1);
                 addDlBtnMode = 1;
                 addStartButton();
@@ -1039,7 +1143,7 @@
                 GM_setValue('addDlBtnMode', 2);
                 addDlBtnMode = 2;
                 addEventListener();
-            }
+            }*/
             GM_setValue('dlFileName', document.getElementById('dlFileName').value);
             GM_setValue('retweetMode', document.getElementById('retweetMode').checked);
             GM_setValue('retweetFileName', document.getElementById('retweetFileName').value);
@@ -1061,6 +1165,13 @@
         window.addEventListener('resize', resizeWindow);
     }
 
+    let svg = document.getElementById('__SVG_SPRITE_NODE__');
+    let symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+    symbol.id = 'woo_svg_download';
+    symbol.setAttribute('viewBox', '0 0 100 100');
+    symbol.innerHTML = '<path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path><path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path>';
+    svg.appendChild(symbol);
+/*
     if(addDlBtnMode == 0) {
         showModal();
     } else if (addDlBtnMode == 1) {
@@ -1068,6 +1179,42 @@
     } else if (addDlBtnMode == 2) {
         addEventListener();
     }
+*/
+    if(GM_getValue('dlFileName', null) === null) {
+        showModal();
+    }
+    new MutationObserver((mutationList, observer) => {
+        // console.log(mutationList);
+        const cards = document.body.querySelectorAll('article.woo-panel-main');
+        // console.log(cards);
+        for (const card of cards) {
+            handleCard(card);
+        }
+        for (const mutation of mutationList) {
+            // console.log(mutation.target);
+            if (mutation.type === 'childList' && mutation.target.tagName === 'DIV' && (mutation.target.className.includes('wbpro-feed-content') || mutation.target.className.includes('Feed_retweet_JqZJb'))) {
+                for (const node of mutation.addedNodes) {
+                    // console.log(node);
+                    const imgs = node.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3');
+                    // console.log(imgs);
+                    for (const [ idx, img ] of Object.entries(imgs)) {
+                        if (img.parentElement.getElementsByClassName('download-single-button').length === 0) {
+                            if (img.className.includes('picture-viewer_pic_37YQ3')) {
+                                const previews = node.querySelectorAll('div.picture-viewer_preview_2wOSq');
+                                for (const [ index, preview ] of Object.entries(previews)) {
+                                    if (preview.className.includes('picture-viewer_cur_anUEY')) {
+                                        addSingleDlBtn(img, parseInt(index) + 1);
+                                    }
+                                }
+                            } else {
+                                addSingleDlBtn(img, parseInt(idx) + 1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }).observe(document.body, { attributes: false, childList: true, subtree: true });
 
     let settingButton = document.createElement('button');
     settingButton.textContent = text[6];
