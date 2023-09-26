@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.0.0
+// @version      1.0.1
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -562,16 +562,17 @@
                     let padLength = Object.entries(picInfos).length.toString().length;
                     // console.log(idx, picInfos);
                     const pic = Object.entries(picInfos)[idx][1];
-                    downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, idx, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                    downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                 }
                 if (mixMediaInfo && mixMediaInfo.items) {
                     // console.log('mix media');
+                    console.log(mixMediaInfo.items);
                     let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
                     const media = Object.entries(mixMediaInfo.items)[idx][1];
                     if(media.type === 'video') {
-                        downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, idx, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     } else if (media.type === 'pic') {
-                        downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, idx, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
                 const packName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetPackFileName', '{mblogid}.zip') : GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
@@ -752,11 +753,11 @@
                                     const previews = card.querySelectorAll('div.picture-viewer_preview_2wOSq');
                                     for (const [ index, preview ] of Object.entries(previews)) {
                                         if (preview.className.includes('picture-viewer_cur_anUEY')) {
-                                            addSingleDlBtn(img, parseInt(index) + 1);
+                                            addSingleDlBtn(img, parseInt(index));
                                         }
                                     }
                                 } else {
-                                    addSingleDlBtn(img, parseInt(idx) + 1);
+                                    addSingleDlBtn(img, parseInt(idx));
                                 }
                             }
                         }
@@ -1203,11 +1204,11 @@
                                 const previews = node.querySelectorAll('div.picture-viewer_preview_2wOSq');
                                 for (const [ index, preview ] of Object.entries(previews)) {
                                     if (preview.className.includes('picture-viewer_cur_anUEY')) {
-                                        addSingleDlBtn(img, parseInt(index) + 1);
+                                        addSingleDlBtn(img, parseInt(index));
                                     }
                                 }
                             } else {
-                                addSingleDlBtn(img, parseInt(idx) + 1);
+                                addSingleDlBtn(img, parseInt(idx));
                             }
                         }
                     }
