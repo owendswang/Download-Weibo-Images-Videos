@@ -33,7 +33,7 @@ English Version: [README.md](README.md)
 2. 打开Tampermonkey -> 切换至'实用工具'选项卡. -> 选择'压缩包' -> '导入': 浏览 -> 选择刚下载的ZIP文件 -> 选择'安装'。
 
 ## 使用教程:
-1. 首次打开时，会弹出设置窗口；\
+1. 首次打开时，会弹出设置窗口，以后可以点击页面左上角的“下载设置”按钮打开设置；\
    ![2.jpg](res/2.JPG?raw=true)
 2. Tampermonkey高级设置，下载模式选择“原生”，添加mov到下载白名单方法：\
    ![4.png](res/4.png?raw=true)
