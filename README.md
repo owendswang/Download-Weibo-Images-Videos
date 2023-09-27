@@ -35,7 +35,7 @@ Or Install manually:
 2. Open Tampermonkey. -> Switch to 'Utilities' tab. -> 'Zip' -> 'Import': Browse -> Choose the ZIP file -> 'Install'.
 
 ## Tutorial:
-1. First time, this setting would show up. Choose any one you like.\
+1. First time, this setting would show up. Choose any one you like. You can find the "Download Settings" button on the top left corner on the screen.\
    ![2.jpg](res/2.JPG?raw=true)
 2. Tampermonkey Advance Settings. Set download mode to 'Native' and add .mov to download whitelist.\
    ![4.png](res/4.png?raw=true)
