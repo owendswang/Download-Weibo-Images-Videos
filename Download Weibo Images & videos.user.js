@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.1.0
+// @version      1.1.1
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -23,6 +23,7 @@
 // @grant        GM_notification
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_registerMenuCommand
 // @connect      weibo.com
 // @connect      www.weibo.com
 // @connect      wx1.sinaimg.cn
@@ -68,7 +69,8 @@
         '使用Aria2c远程下载',
         'RPC接口地址',
         '使用此方式下载，无法使用打包功能，无法在页面右下角显示下载进度和结果。',
-        '如果接口地址不是localhost，需手动将地址添加到XHR白名单。'
+        '如果接口地址不是localhost，需手动将地址添加到XHR白名单。',
+        '设置',
     ];
     let text_en = [
         'Add Download Buttons',
@@ -95,7 +97,8 @@
         'Use Aria2c remote download API',
         'RPC Url',
         'In this mode, You would not be able to download in ZIP mode and to observe download progress and result.',
-        'If it\'s not \'localhost\', you would have to add it to \'XHR white list\'.'
+        'If it\'s not \'localhost\', you would have to add it to \'XHR white list\'.',
+        'Settings',
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -639,7 +642,7 @@
         });
         imgCtn.appendChild(dlBtn);
     }
-/*
+
     function sAddDlBtn(footer) {
         // console.log('add download button on search');
         const lis = footer.getElementsByTagName('li');
@@ -665,7 +668,8 @@
             const mid = cardWrap.getAttribute('mid');
             // console.log(mid);
             if(mid) {
-                const resJson = await httpGet('https://' + location.host + '/ajax/statuses/show?id=' + mid);
+                // console.log('https://' + location.host + '/ajax/statuses/show?id=' + mid);
+                const resJson = await httpGet('https://weibo.com/ajax/statuses/show?id=' + mid);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -724,7 +728,7 @@
         footer.firstChild.appendChild(dlBtnLi);
         // console.log('added download button');
     }
-
+/*
     function bodyMouseOver(event) {
         if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
             // let arts = document.getElementsByTagName('article');
@@ -1336,29 +1340,59 @@
     }
     new MutationObserver((mutationList, observer) => {
         // console.log(mutationList);
-        const cards = document.body.querySelectorAll('article.woo-panel-main');
-        // console.log(cards);
-        for (const card of cards) {
-            handleCard(card);
-        }
-        for (const mutation of mutationList) {
-            // console.log(mutation.target);
-            if (mutation.type === 'childList' && mutation.target.tagName === 'DIV' && (mutation.target.className.includes('wbpro-feed-content') || mutation.target.className.includes('Feed_retweet_JqZJb'))) {
-                for (const node of mutation.addedNodes) {
-                    // console.log(node);
-                    const imgs = node.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3');
-                    // console.log(imgs);
-                    for (const [ idx, img ] of Object.entries(imgs)) {
-                        if (img.parentElement.getElementsByClassName('download-single-button').length === 0) {
-                            if (img.className.includes('picture-viewer_pic_37YQ3')) {
-                                const previews = node.querySelectorAll('div.picture-viewer_preview_2wOSq');
-                                for (const [ index, preview ] of Object.entries(previews)) {
-                                    if (preview.className.includes('picture-viewer_cur_anUEY')) {
-                                        addSingleDlBtn(img, parseInt(index));
+        if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
+            const cards = document.body.querySelectorAll('article.woo-panel-main');
+            // console.log(cards);
+            for (const card of cards) {
+                handleCard(card);
+            }
+            for (const mutation of mutationList) {
+                // console.log(mutation.target);
+                if (mutation.type === 'childList' && mutation.target.tagName === 'DIV' && (mutation.target.className.includes('wbpro-feed-content') || mutation.target.className.includes('Feed_retweet_JqZJb'))) {
+                    for (const node of mutation.addedNodes) {
+                        // console.log(node);
+                        const imgs = node.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3');
+                        // console.log(imgs);
+                        for (const [ idx, img ] of Object.entries(imgs)) {
+                            if (img.parentElement.getElementsByClassName('download-single-button').length === 0) {
+                                if (img.className.includes('picture-viewer_pic_37YQ3')) {
+                                    const previews = node.querySelectorAll('div.picture-viewer_preview_2wOSq');
+                                    for (const [ index, preview ] of Object.entries(previews)) {
+                                        if (preview.className.includes('picture-viewer_cur_anUEY')) {
+                                            addSingleDlBtn(img, parseInt(index));
+                                        }
                                     }
+                                } else {
+                                    addSingleDlBtn(img, parseInt(idx));
                                 }
-                            } else {
-                                addSingleDlBtn(img, parseInt(idx));
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (location.host == 's.weibo.com') {
+            // let cards = document.querySelectorAll('#pl_feedlist_index .card-wrap');
+            const footers = document.querySelectorAll('#pl_feedlist_index .card-act');
+            for (const footer of footers) {
+                if(footer.getElementsByClassName('download-button').length > 0) {
+                    // console.log('already added download button');
+                } else {
+                    // console.log(footer.parentElement);
+                    if(footer.parentElement.className == 'card' && footer.parentElement.parentElement.className == 'card-wrap') {
+                        const card = footer.parentElement;
+                        let added = false;
+                        const media_prev = card.querySelector('div[node-type="feed_list_media_prev"]');
+                        // console.log(media_prev);
+                        if (media_prev) {
+                            const imgs = media_prev.getElementsByTagName('img');
+                            // console.log(imgs);
+                            if(imgs.length > 0) {
+                                sAddDlBtn(footer);
+                                added = true;
+                            }
+                            const videos = card.getElementsByTagName('video');
+                            if(videos.length > 0 && added == false) {
+                                sAddDlBtn(footer);
                             }
                         }
                     }
@@ -1402,4 +1436,5 @@
     });
     settingButton.addEventListener('click', showModal);
     document.body.appendChild(settingButton);
+    GM_registerMenuCommand(text[25], showModal, "0");
 })();
