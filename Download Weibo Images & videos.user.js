@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.1.1
+// @version      1.1.2
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -45,60 +45,64 @@
 
     let text = [];
     let text_zh = [
-        '添加下载按钮',
-        '欢迎使用“下载微博图片”脚本',
-        '请选择添加下载按钮的方式：',
-        '点击“添加下载按钮”来添加下载按钮。',
-        '当鼠标位于浏览器页面时添加下载按钮，但这种方式会占用很多CPU资源。',
-        '确定',
-        '下载设置',
-        '下载文件名称',
-        '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用\n{content} - 博文内容（最多前25个字符）',
-        '下载队列',
-        '重试',
-        '关闭',
-        '取消',
-        '打包下载',
-        '打包文件名',
-        '与“下载文件名称”规则相同，但{original}、{ext}、{index}除外',
-        '单独设置转发微博下载文件名称',
-        '转发微博下载文件名称',
-        '除“下载文件名”规则外，额外标签如下：\n{re.mblogid} - 转博mblogid\n{re.username} - 转发博主名称\n{re.userid} - 转发博主ID\n{re.uid} - 转博uid\n{re.content} - 转发博文内容（最多前25个字符）\n{re.YYYY} {re.MM} {re.DD} {re.HH} {re.mm} {re.ss}\n - 原博发布时间的年份、月份、日期、小时、\n分钟、秒，可分开独立使用',
-        '转发微博打包文件名',
-        '与“转发微博下载文件名称”规则相同，但{original}、{ext}、{index}除外',
-        '使用Aria2c远程下载',
-        'RPC接口地址',
-        '使用此方式下载，无法使用打包功能，无法在页面右下角显示下载进度和结果。',
-        '如果接口地址不是localhost，需手动将地址添加到XHR白名单。',
-        '设置',
+/*0*/   '添加下载按钮',
+/*1*/   '欢迎使用“下载微博图片”脚本',
+/*2*/   '请选择添加下载按钮的方式：',
+/*3*/   '点击“添加下载按钮”来添加下载按钮。',
+/*4*/   '当鼠标位于浏览器页面时添加下载按钮，但这种方式会占用很多CPU资源。',
+/*5*/   '确定',
+/*6*/   '下载设置',
+/*7*/   '下载文件名称',
+/*8*/   '{original} - 原文件名\n{username} - 原博主名称\n{userid} - 原博主ID\n{mblogid} - 原博mblogid\n{uid} - 原博uid\n{ext} - 文件后缀\n{index} - 图片序号\n{YYYY} {MM} {DD} {HH} {mm} {ss} - 原博发布时\n间的年份、月份、日期、小时、分钟、秒，可\n分开独立使用\n{content} - 博文内容（最多前25个字符）',
+/*9*/   '下载队列',
+/*10*/  '重试',
+/*11*/  '关闭',
+/*12*/  '取消',
+/*13*/  '打包下载',
+/*14*/  '打包文件名',
+/*15*/  '与“下载文件名称”规则相同，但{original}、{ext}、{index}除外',
+/*16*/  '单独设置转发微博下载文件名称',
+/*17*/  '转发微博下载文件名称',
+/*18*/  '除“下载文件名”规则外，额外标签如下：\n{re.mblogid} - 转博mblogid\n{re.username} - 转发博主名称\n{re.userid} - 转发博主ID\n{re.uid} - 转博uid\n{re.content} - 转发博文内容（最多前25个字符）\n{re.YYYY} {re.MM} {re.DD} {re.HH} {re.mm} {re.ss}\n - 原博发布时间的年份、月份、日期、小时、\n分钟、秒，可分开独立使用',
+/*19*/  '转发微博打包文件名',
+/*20*/  '与“转发微博下载文件名称”规则相同，但{original}、{ext}、{index}除外',
+/*21*/  '使用Aria2c远程下载',
+/*22*/  'RPC接口地址',
+/*23*/  '使用此方式下载，无法使用打包功能，无法在页面右下角显示下载进度和结果。',
+/*24*/  '如果接口地址不是localhost，需手动将地址添加到XHR白名单。',
+/*25*/  '设置',
+/*26*/  '<b>注意</b>：',
+/*27*/  '启用“打包下载”时，需区分多文件名称，\n避免重复而导致打包后只有一个文件，文件命\n名时，必须包含{original}、{index}中至少一个\n标签。',
     ];
     let text_en = [
-        'Add Download Buttons',
-        'Welcome Using \'Download Weibo Images\' Script',
-        'Which way do you like to add download buttons to each weibo post?',
-        'Click \'Add Download Buttons\' button to add download buttons.',
-        'When mouse over browser page, add download buttons automatically. But it takes a lot of CPU usage.',
-        'OK',
-        'Download Setting',
-        'Download File Name',
-        '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - Original mblogid\n{uid} - Original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post\n{content} - Original post content (limited to first 25 characters)',
-        'Download Queue',
-        'Retry',
-        'Close',
-        'Cancel',
-        'Pack download files as a ZIP file',
-        'ZIP File Name',
-        'The same rules as "Download File Name" except {original}, {ext} and {index}',
-        'Different File Name for Retweets',
-        'Retweet Download File Name',
-        'Except the rules for "Download File Name", there are additional tags as below.\n{re.mblogid} - Retweet mblogid\n{re.username} - Retweet user name\n{re.userid} - Retweet user ID\n{re.uid} - Retweet uid\n{re.content} - Retweet post content (limited to first 25 characters)\n{re.YYYY} {re.MM} {re.DD} {re.HH} {re.mm} {re.ss} - "Year", "Month", "Date", "Hour", "Minute", "Second" of the created time of the retweet post',
-        'Retweet Zip File Name',
-        'The same rules as "Retweet Download File Name" except {original}, {ext} and {index}',
-        'Use Aria2c remote download API',
-        'RPC Url',
-        'In this mode, You would not be able to download in ZIP mode and to observe download progress and result.',
-        'If it\'s not \'localhost\', you would have to add it to \'XHR white list\'.',
-        'Settings',
+/*0*/   'Add Download Buttons',
+/*1*/   'Welcome Using \'Download Weibo Images\' Script',
+/*2*/   'Which way do you like to add download buttons to each weibo post?',
+/*3*/   'Click \'Add Download Buttons\' button to add download buttons.',
+/*4*/   'When mouse over browser page, add download buttons automatically. But it takes a lot of CPU usage.',
+/*5*/   'OK',
+/*6*/   'Download Setting',
+/*7*/   'Download File Name',
+/*8*/   '{original} - Original file name\n{username} - Original user name\n{userid} - Original user ID\n{mblogid} - Original mblogid\n{uid} - Original uid\n{ext} - File extention\n{index} - Image index\n{YYYY} {MM} {DD} {HH} {mm} {ss} - "Year", \n"Month", "Date", "Hour", "Minute", "Second" \nof the created time of the original post\n{content} - Original post content (limited to \nfirst 25 characters)',
+/*9*/   'Download Queue',
+/*10*/  'Retry',
+/*11*/  'Close',
+/*12*/  'Cancel',
+/*13*/  'Pack download files as a ZIP file',
+/*14*/  'ZIP File Name',
+/*15*/  'The same rules as "Download File Name" except {original}, {ext} and {index}',
+/*16*/  'Different File Name for Retweets',
+/*17*/  'Retweet Download File Name',
+/*18*/  'Except the rules for "Download File Name", there are additional tags as below.\n{re.mblogid} - Retweet mblogid\n{re.username} - Retweet user name\n{re.userid} - Retweet user ID\n{re.uid} - Retweet uid\n{re.content} - Retweet post content (limited to first 25 characters)\n{re.YYYY} {re.MM} {re.DD} {re.HH} {re.mm} {re.ss} - "Year", "Month", "Date", "Hour", "Minute", "Second" of the created time of the retweet post',
+/*19*/  'Retweet Zip File Name',
+/*20*/  'The same rules as "Retweet Download File Name" except {original}, {ext} and {index}',
+/*21*/  'Use Aria2c remote download API',
+/*22*/  'RPC Url',
+/*23*/  'In this mode, You would not be able to download in ZIP mode and to observe download progress and result.',
+/*24*/  'If it\'s not \'localhost\', you would have to add it to \'XHR white list\'.',
+/*25*/  'Settings',
+/*26*/  '<b>Attention</b>: ',
+/*27*/  'When \'ZIP mode\' enabled, you have \nto include one of the tags {original} or {index} \nto avoid duplicated ones being overwritten.',
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -428,7 +432,7 @@
             // console.log('zip', zip);
             let promises = downloadList.map(async function(ele, idx) {
                 return await downloadWrapper(ele.url, ele.name, ele.headerFlag, true).then(function(data) {
-                    // console.log('data', data);
+                    // console.log(ele, idx, 'data', data);
                     if (data) zip.file(downloadList[idx].name, data);
                 });
             });
@@ -980,12 +984,19 @@
         inputFileName.style.borderRadius = '0.2rem';
         inputFileName.defaultValue = GM_getValue('dlFileName', '{original}.{ext}');
         question2.appendChild(inputFileName);
-        let fileNameExplain = document.createElement('p');
-        fileNameExplain.textContent = text[8];
-        fileNameExplain.style.marginTop = '0.5rem';
-        fileNameExplain.style.whiteSpace = 'pre';
-        fileNameExplain.style.color = 'gray';
-        question2.appendChild(fileNameExplain);
+        let fileNameExplain1 = document.createElement('p');
+        fileNameExplain1.innerHTML = text[8];
+        fileNameExplain1.style.marginTop = '0.5rem';
+        fileNameExplain1.style.marginBottom = '0';
+        fileNameExplain1.style.whiteSpace = 'pre';
+        fileNameExplain1.style.color = 'gray';
+        question2.appendChild(fileNameExplain1);
+        let fileNameExplain2 = document.createElement('p');
+        fileNameExplain2.innerHTML = text[26] + text[27];
+        fileNameExplain2.style.marginTop = '0.5rem';
+        fileNameExplain2.style.whiteSpace = 'pre';
+        fileNameExplain2.style.color = 'gray';
+        question2.appendChild(fileNameExplain2);
         modal.appendChild(question2);
         let question3 = document.createElement('p');
         question3.style.paddingLeft = '2rem';
@@ -1297,6 +1308,11 @@
                 addDlBtnMode = 2;
                 addEventListener();
             }*/
+            if (document.getElementById('zipMode').checked && (!document.getElementById('dlFileName').value.includes('{original}') || !document.getElementById('dlFileName').value.includes('{original}'))) {
+                document.getElementById('dlFileName').focus();
+                alert(text[27].replaceAll(/\n/g, ''));
+                return;
+            }
             GM_setValue('dlFileName', document.getElementById('dlFileName').value);
             GM_setValue('retweetMode', document.getElementById('retweetMode').checked);
             GM_setValue('retweetFileName', document.getElementById('retweetFileName').value);
