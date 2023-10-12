@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.1.2
+// @version      1.1.3
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -42,6 +42,8 @@
 
 (function() {
     'use strict';
+
+    const settingVersion = 1;
 
     let text = [];
     let text_zh = [
@@ -1308,9 +1310,9 @@
                 addDlBtnMode = 2;
                 addEventListener();
             }*/
-            if (document.getElementById('zipMode').checked && (!document.getElementById('dlFileName').value.includes('{original}') || !document.getElementById('dlFileName').value.includes('{original}'))) {
-                document.getElementById('dlFileName').focus();
+            if (document.getElementById('zipMode').checked && !document.getElementById('dlFileName').value.includes('{original}') && !document.getElementById('dlFileName').value.includes('{index}')) {
                 alert(text[27].replaceAll(/\n/g, ''));
+                document.getElementById('dlFileName').focus();
                 return;
             }
             GM_setValue('dlFileName', document.getElementById('dlFileName').value);
@@ -1321,17 +1323,18 @@
             GM_setValue('retweetPackFileName', document.getElementById('retweetPackFileName').value);
             GM_setValue('ariaMode', document.getElementById('ariaMode').checked);
             GM_setValue('ariaRpcUrl', document.getElementById('ariaRpcUrl').value);
+            GM_setValue('isSet', settingVersion);
             document.body.removeChild(modal);
             document.body.removeChild(bg);
             window.removeEventListener('resize', resizeWindow);
         });
         modal.appendChild(okButton);
         document.body.appendChild(modal);
-        bg.addEventListener('click', function(event) {
+        /*bg.addEventListener('click', function(event) {
             document.body.removeChild(modal);
             document.body.removeChild(bg);
             window.removeEventListener('resize', resizeWindow);
-        });
+        });*/
         resizeWindow();
         window.addEventListener('resize', resizeWindow);
     }
@@ -1351,7 +1354,7 @@
         addEventListener();
     }
 */
-    if(GM_getValue('dlFileName', null) === null) {
+    if(GM_getValue('isSet', null) !== settingVersion) {
         showModal();
     }
     new MutationObserver((mutationList, observer) => {
