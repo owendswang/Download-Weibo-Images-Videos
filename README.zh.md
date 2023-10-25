@@ -35,9 +35,6 @@ English Version: [README.md](README.md)
 ## 使用教程:
 1. 首次打开时，会弹出设置窗口，以后可以点击页面左上角的“下载设置”按钮打开设置；\
    ![2.jpg](res/2.JPG?raw=true)
-2. Tampermonkey高级设置，下载模式选择“原生”，添加mov到下载白名单方法：\
-   ![4.png](res/4.png?raw=true)
-   ![5.png](res/5.png?raw=true)
 3. 将RPC地址添加到XHR白名单方法：\
    ![6.png](res/6.png?raw=true)
    ![7.png](res/7.png?raw=true)
