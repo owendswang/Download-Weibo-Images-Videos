@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.1.4
+// @version      1.1.5
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -25,13 +25,8 @@
 // @grant        GM_registerMenuCommand
 // @connect      weibo.com
 // @connect      www.weibo.com
-// @connect      wx1.sinaimg.cn
-// @connect      wx2.sinaimg.cn
-// @connect      wx3.sinaimg.cn
-// @connect      wx4.sinaimg.cn
-// @connect      g.us.sinaimg.cn
-// @connect      f.video.weibocdn.com
-// @connect      f.video.weibocdn.com
+// @connect      sinaimg.cn
+// @connect      weibocdn.com
 // @connect      localhost
 // @namespace    http://tampermonkey.net/
 // @run-at       document-end
@@ -348,7 +343,7 @@
         progress.firstChild.textContent = name + ' [0%]';
         if (zipMode) {
             return new Promise(function(resolve, reject) {
-                /*const download = GM_xmlhttpRequest({
+                const download = GM_xmlhttpRequest({
                     method: 'GET',
                     url,
                     responseType: 'blob',
@@ -382,8 +377,9 @@
                     download.abort();
                     this.parentNode.remove();
                     if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                };*/
-                let oReq = new XMLHttpRequest();
+                };
+                // 下面这种原生的方法，可以正常下载非V+的资源，遇到V+的资源会报错。
+                /*let oReq = new XMLHttpRequest();
                 oReq.open("GET", url);
                 oReq.responseType = 'blob';
                 oReq.onprogress = (e) => {
@@ -413,7 +409,7 @@
                     this.parentNode.remove();
                     oReq.abort();
                     if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                };
+                };*/
             });
         } else {
             /*const download = GM_download({
@@ -448,7 +444,41 @@
                 this.parentNode.remove();
                 if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
             };*/
-            let oReq = new XMLHttpRequest();
+            // 这个方法也可以，而且不是走GM_download，不会被油猴设置里的下载选项影响。
+            const download = GM_xmlhttpRequest({
+                method: 'GET',
+                url,
+                responseType: 'blob',
+                headers: headerFlag ? {
+                    'Referer': 'https://' + location.host,
+                    'Origin': 'https://' + location.host
+                } : null,
+                onprogress: (e) => {
+                    // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
+                    const percent = e.done / e.total * 100;
+                    progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
+                    progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
+                },
+                onload: ({ status, response }) => {
+                    const timeout = setTimeout(() => {
+                        progress.remove();
+                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    }, 1000);
+                    progress.lastChild.onclick = function(e) {
+                        clearTimeout(timeout);
+                        this.parentNode.remove();
+                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    };
+                    saveAs(response, name);
+                },
+            });
+            progress.lastChild.onclick = function(e) {
+                download.abort();
+                this.parentNode.remove();
+                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+            };
+            // 下面这种原生的方法，可以正常下载非V+的资源，遇到V+的资源会报错。
+            /*let oReq = new XMLHttpRequest();
             oReq.open("GET", url);
             oReq.responseType = 'blob';
             oReq.onprogress = (e) => {
@@ -477,7 +507,7 @@
                 this.parentNode.remove();
                 oReq.abort();
                 if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-            };
+            };*/
             // 下面fetch的方法，感觉不是很好写，所以就不用下面的方法。
             /*(async function () {
                 let controller = new AbortController();
