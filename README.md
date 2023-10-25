@@ -37,9 +37,6 @@ Or Install manually:
 ## Tutorial:
 1. First time, this setting would show up. Choose any one you like. You can find the "Download Settings" button on the top left corner on the screen.\
    ![2.jpg](res/2.JPG?raw=true)
-2. Tampermonkey Advance Settings. Set download mode to 'Native' and add .mov to download whitelist.\
-   ![4.png](res/4.png?raw=true)
-   ![5.png](res/5.png?raw=true)
-3. Add RPC host to XHR white list.\
+2. Add RPC host to XHR white list.\
    ![6.png](res/6.png?raw=true)
    ![7.png](res/7.png?raw=true)
