@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.1.3
+// @version      1.1.4
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -18,7 +18,6 @@
 // @license      MIT
 // @homepage     https://greasyfork.org/scripts/430877
 // @supportURL   https://github.com/owendswang/Download-Weibo-Images-Videos
-// @grant        GM_download
 // @grant        GM_xmlhttpRequest
 // @grant        GM_notification
 // @grant        GM_getValue
@@ -37,7 +36,6 @@
 // @namespace    http://tampermonkey.net/
 // @run-at       document-end
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.9.1/jszip.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // ==/UserScript==
 
 (function() {
@@ -169,6 +167,20 @@
     progressBar.appendChild(progressCloseBtn);
     // downloadQueueCard.appendChild(progressBar);
 
+    function saveAs(blob, name) {
+        const link = document.createElement("a");
+        link.style.display = "none";
+        link.href = URL.createObjectURL(blob);
+        link.download = name;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        const timeout = setTimeout(() => {
+            URL.revokeObjectURL(link.href);
+            link.parentNode.removeChild(link);
+        }, 1000);
+    }
+
     function send2Aria2c(url, fileName, headerFlag) {
         // console.log(downloadUrl);
         return new Promise(function(resolve, reject) {
@@ -204,22 +216,50 @@
                     }
                     resolve(response);
                 },
-                onabort: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
+                onabort: function(e) { resolve(null); },
                 onerror: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
                 ontimeout: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
             });
+            // 下面这种原生的方法，因为安全原因，不被浏览器允许，属于跨域，且在https页面上请求http。
+            /*let oReq = new XMLHttpRequest();
+            oReq.open("POST", GM_getValue('ariaRpcUrl','http://localhost:6800/jsonrpc'));
+            oReq.setRequestHeader('Content-Type', 'application/json')
+            oReq.onload = (e) => {
+                // console.log(response.responseText);
+                progress.style.background = 'green';
+                const timeout = setTimeout(() => {
+                    progress.remove();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                }, 1000);
+                progress.lastChild.onclick = function(e) {
+                    clearTimeout(timeout);
+                    this.parentNode.remove();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                }
+                resolve(oReq.response);
+            };
+            oReq.onerror = (e) => { downloadError(e, url, fileName, headerFlag, progress); resolve(null); };
+            oReq.onabort = (e) => { resolve(null); };
+            oReq.ontimeout = (e) => { downloadError(e, url, fileName, headerFlag, progress); resolve(null); };
+            oReq.send(JSON.stringify({
+                jsonrpc: '2.0',
+                id: 'weibo',
+                method: 'aria2.addUri',
+                params: [ [ url ], { header, out: fileName } ],
+            }));
+            progress.lastChild.onclick = function(e) {
+                oReq.abort();
+                this.parentNode.remove();
+                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+            };*/
         });
     }
 
-    function httpGet(theUrl) {
-        /*let xmlHttp = new XMLHttpRequest();
-        xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
-        xmlHttp.send( null );
-        return xmlHttp.responseText;*/
+    function httpGet(url) {
         return new Promise(function(resolve, reject) {
-            GM_xmlhttpRequest({
+            /*GM_xmlhttpRequest({
                 method: 'GET',
-                url: theUrl,
+                url,
                 responseType: 'json',
                 headers: {
                     'Referer': 'https://' + location.host,
@@ -232,7 +272,15 @@
                 onabort: function(e) { resolve(null); },
                 onerror: function(e) { resolve(null); },
                 ontimeout: function(e) { resolve(null); },
-            });
+            });*/
+            let oReq = new XMLHttpRequest();
+            oReq.open("GET", url);
+            oReq.responseType = 'json';
+            oReq.onload = (e) => { resolve(oReq.response); };
+            oReq.onerror = (e) => { resolve(null); };
+            oReq.onabort = (e) => { resolve(null); };
+            oReq.ontimeout = (e) => { resolve(null); };
+            oReq.send();
         });
     }
 
@@ -300,7 +348,7 @@
         progress.firstChild.textContent = name + ' [0%]';
         if (zipMode) {
             return new Promise(function(resolve, reject) {
-                const download = GM_xmlhttpRequest({
+                /*const download = GM_xmlhttpRequest({
                     method: 'GET',
                     url,
                     responseType: 'blob',
@@ -323,10 +371,10 @@
                             clearTimeout(timeout);
                             this.parentNode.remove();
                             if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                        }
+                        };
                         resolve(response);
                     },
-                    onabort: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
+                    onabort: function(e) { resolve(null); },
                     onerror: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
                     ontimeout: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
                 });
@@ -334,10 +382,41 @@
                     download.abort();
                     this.parentNode.remove();
                     if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                };*/
+                let oReq = new XMLHttpRequest();
+                oReq.open("GET", url);
+                oReq.responseType = 'blob';
+                oReq.onprogress = (e) => {
+                    // console.log(e);
+                    const percent = e.loaded / e.total * 100;
+                    progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
+                    progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
+                };
+                oReq.onload = (e) => {
+                    const timeout = setTimeout(() => {
+                        progress.remove();
+                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    }, 1000);
+                    progress.lastChild.onclick = function(e) {
+                        clearTimeout(timeout);
+                        this.parentNode.remove();
+                        oReq.abort();
+                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    };
+                    resolve(oReq.response);
+                };
+                oReq.onerror = (e) => { downloadError(e, url, name, headerFlag, progress); resolve(null); };
+                oReq.onabort = (e) => { resolve(null); };
+                oReq.ontimeout = (e) => { downloadError(e, url, name, headerFlag, progress); resolve(null); };
+                oReq.send();
+                progress.lastChild.onclick = function(e) {
+                    this.parentNode.remove();
+                    oReq.abort();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
                 };
             });
         } else {
-            const download = GM_download({
+            /*const download = GM_download({
                 url,
                 name,
                 headers: headerFlag ? {
@@ -368,7 +447,88 @@
                 download.abort();
                 this.parentNode.remove();
                 if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+            };*/
+            let oReq = new XMLHttpRequest();
+            oReq.open("GET", url);
+            oReq.responseType = 'blob';
+            oReq.onprogress = (e) => {
+                // console.log(e);
+                const percent = e.loaded / e.total * 100;
+                progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
+                progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
             };
+            oReq.onload = (e) => {
+                const timeout = setTimeout(() => {
+                    progress.remove();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                }, 1000);
+                progress.lastChild.onclick = function(e) {
+                    clearTimeout(timeout);
+                    this.parentNode.remove();
+                    oReq.abort();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                };
+                saveAs(oReq.response, name);
+            };
+            oReq.onerror = (e) => { downloadError(e, url, name, headerFlag, progress); };
+            oReq.ontimeout = (e) => { downloadError(e, url, name, headerFlag, progress); };
+            oReq.send();
+            progress.lastChild.onclick = function(e) {
+                this.parentNode.remove();
+                oReq.abort();
+                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+            };
+            // 下面fetch的方法，感觉不是很好写，所以就不用下面的方法。
+            /*(async function () {
+                let controller = new AbortController();
+                const response = await fetch(url, { signal: controller.signal });
+                progress.lastChild.onclick = function(e) {
+                    controller.abort();
+                    this.parentNode.remove();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                }
+                const contentLength = response.headers.get('content-length');
+                const total = parseInt(contentLength, 10);
+                let loaded = 0;
+                const reader = response.body.getReader();
+                const res = new Response(new ReadableStream({
+                    async start(controller) {
+                        while(true) {
+                            const { done, value } = await reader.read();
+                            if (value) loaded += value.length;
+                            const percent = loaded / total * 100;
+                            progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
+                            progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
+                            if (done) {
+                                break;
+                                controller.close();
+                            }
+                        }
+                    }
+                }));
+                const blob = await res.blob();
+                const link = document.createElement("a");
+                link.style.display = "none";
+                link.href = URL.createObjectURL(blob);
+                link.download = name;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                progress.style.background = 'green';
+                const timeout = setTimeout(() => {
+                    progress.remove();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    URL.revokeObjectURL(link.href);
+                    link.parentNode.removeChild(link);
+                }, 1000);
+                progress.lastChild.onclick = function(e) {
+                    clearTimeout(timeout);
+                    this.parentNode.remove();
+                    URL.revokeObjectURL(link.href);
+                    link.parentNode.removeChild(link);
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                }
+            })();*/
         }
     }
 
@@ -1456,4 +1616,5 @@
     settingButton.addEventListener('click', showModal);
     document.body.appendChild(settingButton);
     GM_registerMenuCommand(text[25], showModal, "0");
+    // console.log(GM_info.downloadMode);
 })();
