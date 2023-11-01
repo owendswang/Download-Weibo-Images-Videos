@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.1.5
+// @version      1.1.6
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -646,7 +646,7 @@
 
     function handleVideo(mediaInfo, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText) {
         const newList = [];
-        let largeVidUrl = mediaInfo.playback_list ? mediaInfo.playback_list[0].play_info.url : mediaInfo.stream_url;
+        let largeVidUrl = mediaInfo.playback_list ? mediaInfo.playback_list[0].play_info.url : ( mediaInfo.mp4_hd_url || mediaInfo.stream_url_hd || mediaInfo.stream_url );
         let vidName = largeVidUrl.split('?')[0];
         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
         let originalName = vidName.split('.')[0];
