@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.1.6
+// @version      1.1.7
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -250,7 +250,7 @@
         });
     }
 
-    function httpGet(url) {
+    function httpRequest(url, method = 'GET', data = null) {
         return new Promise(function(resolve, reject) {
             /*GM_xmlhttpRequest({
                 method: 'GET',
@@ -269,13 +269,21 @@
                 ontimeout: function(e) { resolve(null); },
             });*/
             let oReq = new XMLHttpRequest();
-            oReq.open("GET", url);
+            oReq.open(method, url);
             oReq.responseType = 'json';
             oReq.onload = (e) => { resolve(oReq.response); };
             oReq.onerror = (e) => { resolve(null); };
             oReq.onabort = (e) => { resolve(null); };
             oReq.ontimeout = (e) => { resolve(null); };
-            oReq.send();
+            if(typeof(data) === 'string') {
+                oReq.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                oReq.send(data);
+            } else if(typeof(data) === 'object') {
+                oReq.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+                oReq.send(JSON.stringify(data));
+            } else {
+                oReq.send();
+            }
         });
     }
 
@@ -644,9 +652,23 @@
         }
     }
 
-    function handleVideo(mediaInfo, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText) {
+    async function handleVideo(mediaInfo, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText) {
         const newList = [];
         let largeVidUrl = mediaInfo.playback_list ? mediaInfo.playback_list[0].play_info.url : ( mediaInfo.mp4_hd_url || mediaInfo.stream_url_hd || mediaInfo.stream_url );
+        if(mediaInfo.hasOwnProperty('h5_url') && mediaInfo.h5_url) {
+            const urlObj = new URL(mediaInfo.h5_url); // e.g. 'https://video.weibo.com/show?fid=1034:4924511439749139'
+            const fid = urlObj.searchParams.get('fid');
+            let url = 'https://' + location.host + '/tv/api/component?page=/tv/show/' + fid; // e.g. 'https://weibo.com/tv/api/component?page=/tv/show/1034:4924511439749139'
+            let data = 'data={"Component_Play_Playinfo":{"oid":"' + fid + '"}}' // e.g. 'data={"Component_Play_Playinfo":{"oid":"1034:4924511439749139"}}'
+            let tvRes = await httpRequest(url, 'POST', data);
+            if(tvRes && tvRes.data && tvRes.data.Component_Play_Playinfo && tvRes.data.Component_Play_Playinfo.urls && Object.keys(tvRes.data.Component_Play_Playinfo.urls).length > 0) {
+                largeVidUrl = tvRes.data.Component_Play_Playinfo.urls[Object.keys(tvRes.data.Component_Play_Playinfo.urls)[0]];
+                if(largeVidUrl.startsWith('//')) {
+                    largeVidUrl = 'http:' + largeVidUrl;
+                }
+            }
+        }
+        // console.log(largeVidUrl);
         let vidName = largeVidUrl.split('?')[0];
         vidName = vidName.split('/')[vidName.split('/').length - 1].split('?')[0];
         let originalName = vidName.split('.')[0];
@@ -707,7 +729,7 @@
                 const header = article.getElementsByTagName('header')[0];
                 const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
                 let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                const resJson = await httpGet('https://' + location.host + '/ajax/statuses/show?id=' + postId);
+                const resJson = await httpRequest('https://' + location.host + '/ajax/statuses/show?id=' + postId);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -732,7 +754,7 @@
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.page_info?.media_info) {
-                        downloadList = downloadList.concat(handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        downloadList = downloadList.concat(await handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
                 if (picInfos) {
@@ -751,7 +773,7 @@
                     for (const [id, media] of Object.entries(mixMediaInfo.items)) {
                         index += 1;
                         if(media.type === 'video') {
-                            downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                            downloadList = downloadList.concat(await handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         } else if (media.type === 'pic') {
                             downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         }
@@ -792,7 +814,7 @@
                 const header = article.getElementsByTagName('header')[0];
                 const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
                 let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                const resJson = await httpGet('https://' + location.host + '/ajax/statuses/show?id=' + postId);
+                const resJson = await httpRequest('https://' + location.host + '/ajax/statuses/show?id=' + postId);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -827,7 +849,7 @@
                     let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
                     const media = Object.entries(mixMediaInfo.items)[idx][1];
                     if(media.type === 'video') {
-                        downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        downloadList = downloadList.concat(await handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     } else if (media.type === 'pic') {
                         downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
@@ -865,7 +887,7 @@
             // console.log(mid);
             if(mid) {
                 // console.log('https://' + location.host + '/ajax/statuses/show?id=' + mid);
-                const resJson = await httpGet('https://weibo.com/ajax/statuses/show?id=' + mid);
+                const resJson = await httpRequest('https://weibo.com/ajax/statuses/show?id=' + mid);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -890,7 +912,7 @@
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
                     if(resJson.hasOwnProperty('page_info')) {
-                        downloadList = downloadList.concat(handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        downloadList = downloadList.concat(await handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
                 if (picInfos) {
@@ -909,7 +931,7 @@
                     for (const [id, media] of Object.entries(mixMediaInfo.items)) {
                         index += 1;
                         if(media.type === 'video') {
-                            downloadList = downloadList.concat(handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                            downloadList = downloadList.concat(await handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         } else if (media.type === 'pic') {
                             downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         }
