@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.1.7
+// @version      1.1.8
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -633,7 +633,9 @@
             let promises = downloadList.map(async function(ele, idx) {
                 return await downloadWrapper(ele.url, ele.name, ele.headerFlag, true).then(function(data) {
                     // console.log(ele, idx, 'data', data);
-                    if (data) zip.file(downloadList[idx].name, data);
+                    const currDate = new Date();
+                    const dateWithOffset = new Date(currDate.getTime() - currDate.getTimezoneOffset() * 60000);
+                    if (data) zip.file(downloadList[idx].name, data, { date: dateWithOffset });
                 });
             });
             // console.log('promises', promises);
@@ -659,7 +661,7 @@
             const urlObj = new URL(mediaInfo.h5_url); // e.g. 'https://video.weibo.com/show?fid=1034:4924511439749139'
             const fid = urlObj.searchParams.get('fid');
             let url = 'https://' + location.host + '/tv/api/component?page=/tv/show/' + fid; // e.g. 'https://weibo.com/tv/api/component?page=/tv/show/1034:4924511439749139'
-            let data = 'data={"Component_Play_Playinfo":{"oid":"' + fid + '"}}' // e.g. 'data={"Component_Play_Playinfo":{"oid":"1034:4924511439749139"}}'
+            let data = 'data={"Component_Play_Playinfo":{"oid":"' + fid + '"}}'; // e.g. 'data={"Component_Play_Playinfo":{"oid":"1034:4924511439749139"}}'
             let tvRes = await httpRequest(url, 'POST', data);
             if(tvRes && tvRes.data && tvRes.data.Component_Play_Playinfo && tvRes.data.Component_Play_Playinfo.urls && Object.keys(tvRes.data.Component_Play_Playinfo.urls).length > 0) {
                 largeVidUrl = tvRes.data.Component_Play_Playinfo.urls[Object.keys(tvRes.data.Component_Play_Playinfo.urls)[0]];
