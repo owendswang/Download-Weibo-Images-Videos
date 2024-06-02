@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.1.8
+// @version      1.1.9
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -31,6 +31,8 @@
 // @namespace    http://tampermonkey.net/
 // @run-at       document-end
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.9.1/jszip.min.js
+// @downloadURL https://update.greasyfork.org/scripts/430877/Download%20Weibo%20Images%20%20Videos%20%28Only%20support%20new%20version%20weibo%20UI%29.user.js
+// @updateURL https://update.greasyfork.org/scripts/430877/Download%20Weibo%20Images%20%20Videos%20%28Only%20support%20new%20version%20weibo%20UI%29.meta.js
 // ==/UserScript==
 
 (function() {
@@ -252,22 +254,6 @@
 
     function httpRequest(url, method = 'GET', data = null) {
         return new Promise(function(resolve, reject) {
-            /*GM_xmlhttpRequest({
-                method: 'GET',
-                url,
-                responseType: 'json',
-                headers: {
-                    'Referer': 'https://' + location.host,
-                    'Origin': 'https://' + location.host
-                },
-                onload: ({ status, response }) => {
-                    // console.log(response);
-                    resolve(response)
-                },
-                onabort: function(e) { resolve(null); },
-                onerror: function(e) { resolve(null); },
-                ontimeout: function(e) { resolve(null); },
-            });*/
             let oReq = new XMLHttpRequest();
             oReq.open(method, url);
             oReq.responseType = 'json';
@@ -284,6 +270,27 @@
             } else {
                 oReq.send();
             }
+        });
+    }
+
+    function GM_httpRequest(url, method = 'GET', data = null) {
+        return new Promise(function(resolve, reject) {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url,
+                responseType: 'json',
+                headers: {
+                    'Referer': 'https://' + location.host,
+                    'Origin': 'https://' + location.host
+                },
+                onload: ({ status, response }) => {
+                    // console.log(response);
+                    resolve(response)
+                },
+                onabort: function(e) { resolve(null); },
+                onerror: function(e) { resolve(null); },
+                ontimeout: function(e) { resolve(null); },
+            });
         });
     }
 
@@ -889,7 +896,7 @@
             // console.log(mid);
             if(mid) {
                 // console.log('https://' + location.host + '/ajax/statuses/show?id=' + mid);
-                const resJson = await httpRequest('https://weibo.com/ajax/statuses/show?id=' + mid);
+                const resJson = await GM_httpRequest('https://weibo.com/ajax/statuses/show?id=' + mid);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
