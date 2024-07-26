@@ -70,6 +70,7 @@
 /*25*/  '设置',
 /*26*/  '<b>注意</b>：',
 /*27*/  '启用“打包下载”时，需区分多文件名称，\n避免重复而导致打包后只有一个文件，文件命\n名时，必须包含{original}、{index}中至少一个\n标签。',
+/*28*/  '下载视频封面',
     ];
     let text_en = [
 /*0*/   'Add Download Buttons',
@@ -100,6 +101,7 @@
 /*25*/  'Settings',
 /*26*/  '<b>Attention</b>: ',
 /*27*/  'When \'ZIP mode\' enabled, you have \nto include one of the tags {original} or {index} \nto avoid duplicated ones being overwritten.',
+/*28*/  'Download video cover image',
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -273,7 +275,7 @@
         });
     }
 
-    function GM_httpRequest(url, method = 'GET', data = null) {
+    function gmHttpRequest(url, method = 'GET', data = null) {
         return new Promise(function(resolve, reject) {
             GM_xmlhttpRequest({
                 method: 'GET',
@@ -670,6 +672,7 @@
             let url = 'https://' + location.host + '/tv/api/component?page=/tv/show/' + fid; // e.g. 'https://weibo.com/tv/api/component?page=/tv/show/1034:4924511439749139'
             let data = 'data={"Component_Play_Playinfo":{"oid":"' + fid + '"}}'; // e.g. 'data={"Component_Play_Playinfo":{"oid":"1034:4924511439749139"}}'
             let tvRes = await httpRequest(url, 'POST', data);
+            // console.log(tvRes);
             if(tvRes && tvRes.data && tvRes.data.Component_Play_Playinfo && tvRes.data.Component_Play_Playinfo.urls && Object.keys(tvRes.data.Component_Play_Playinfo.urls).length > 0) {
                 largeVidUrl = tvRes.data.Component_Play_Playinfo.urls[Object.keys(tvRes.data.Component_Play_Playinfo.urls)[0]];
                 if(largeVidUrl.startsWith('//')) {
@@ -698,7 +701,7 @@
 
     function handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText) {
         let newList = [];
-        let largePicUrl = pic.largest.url;
+        let largePicUrl = pic.largest?.url || pic.pic_big?.url;
         let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
         let originalName = picName.split('.')[0];
         let ext = picName.split('.')[1];
@@ -765,6 +768,9 @@
                     if(resJson.page_info?.media_info) {
                         downloadList = downloadList.concat(await handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
+                    if(resJson.page_info?.pic_info && GM_getValue('dlVidCov', true)) {
+                        downloadList = downloadList.concat(handlePic(resJson.page_info.pic_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                    }
                 }
                 if (picInfos) {
                     // console.log('download images');
@@ -782,7 +788,10 @@
                     for (const [id, media] of Object.entries(mixMediaInfo.items)) {
                         index += 1;
                         if(media.type === 'video') {
-                            downloadList = downloadList.concat(await handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                            downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                            if (GM_getValue('dlVidCov', true)) {
+                                downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                            }
                         } else if (media.type === 'pic') {
                             downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         }
@@ -858,7 +867,10 @@
                     let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
                     const media = Object.entries(mixMediaInfo.items)[idx][1];
                     if(media.type === 'video') {
-                        downloadList = downloadList.concat(await handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        if(GM_getValue('dlVidCov', true)) {
+                            downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        }
                     } else if (media.type === 'pic') {
                         downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
@@ -889,14 +901,13 @@
         dlBtn.addEventListener('click', async function(event) {
             // console.log('download');
             event.preventDefault();
-            const card = this.parentElement.parentElement.parentElement.parentElement;
-            const cardWrap = card.parentElement;
-            // console.log(card, cardWrap);
+            const cardWrap = this.closest('div.card-wrap');
+            // console.log(cardWrap);
             const mid = cardWrap.getAttribute('mid');
             // console.log(mid);
             if(mid) {
                 // console.log('https://' + location.host + '/ajax/statuses/show?id=' + mid);
-                const resJson = await GM_httpRequest('https://weibo.com/ajax/statuses/show?id=' + mid);
+                const resJson = await gmHttpRequest('https://weibo.com/ajax/statuses/show?id=' + mid);
                 // console.log(resJson);
                 let status = resJson;
                 let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
@@ -920,8 +931,11 @@
                 let downloadList = [];
                 if(footer.parentElement.getElementsByTagName('video').length > 0) {
                     // console.log('download video');
-                    if(resJson.hasOwnProperty('page_info')) {
+                    if(resJson.page_info?.media_info) {
                         downloadList = downloadList.concat(await handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                    }
+                    if(resJson.page_info?.pic_info && GM_getValue('dlVidCov', true)) {
+                        downloadList = downloadList.concat(handlePic(resJson.page_info.pic_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
                 if (picInfos) {
@@ -940,7 +954,10 @@
                     for (const [id, media] of Object.entries(mixMediaInfo.items)) {
                         index += 1;
                         if(media.type === 'video') {
-                            downloadList = downloadList.concat(await handleVideo(media.data.media_info, 1, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                            downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                            if(GM_getValue('dlVidCov', true)) {
+                                downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                            }
                         } else if (media.type === 'pic') {
                             downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         }
@@ -1399,6 +1416,23 @@
         inputAriaExplain.style.color = 'gray';
         question5.appendChild(inputAriaExplain);
         modal.appendChild(question5);
+        let question6 = document.createElement('p');
+        question6.style.paddingLeft = '2rem';
+        question6.style.paddingRight = '2rem';
+        question6.style.marginTop = '1rem';
+        question6.style.marginBottom = '0';
+        let labelDlVidCov = document.createElement('label');
+        labelDlVidCov.setAttribute('for', 'dlVidCov');
+        labelDlVidCov.textContent = text[28];
+        labelDlVidCov.style.display = 'inline-block';
+        labelDlVidCov.style.paddingRight = '0.2rem';
+        question6.appendChild(labelDlVidCov);
+        let inputDlVidCov = document.createElement('input');
+        inputDlVidCov.type = 'checkbox';
+        inputDlVidCov.id = 'dlVidCov';
+        inputDlVidCov.checked = GM_getValue('dlVidCov', true);
+        question6.appendChild(inputDlVidCov);
+        modal.appendChild(question6);
         inputRetweetMode.addEventListener('change', function(event) {
             if (event.currentTarget.checked) {
                 // labelRetweetFileName.style.display = 'block';
@@ -1544,6 +1578,7 @@
             GM_setValue('retweetPackFileName', document.getElementById('retweetPackFileName').value);
             GM_setValue('ariaMode', document.getElementById('ariaMode').checked);
             GM_setValue('ariaRpcUrl', document.getElementById('ariaRpcUrl').value);
+            GM_setValue('dlVidCov', document.getElementById('dlVidCov').checked);
             GM_setValue('isSet', settingVersion);
             document.body.removeChild(modal);
             document.body.removeChild(bg);
