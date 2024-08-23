@@ -11,6 +11,7 @@ English Version: [README.md](README.md)
 - 页面右下角显示下载进度和队列
 - 支持打包下载
 - 支持使用Aria2c下载
+- 支持下载无水印图片
 
 ## 页面截图：
 ![1.jpg](res/1.JPG?raw=true)
