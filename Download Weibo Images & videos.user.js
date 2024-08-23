@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.2.1
+// @version      1.3.0
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -71,6 +71,8 @@
 /*26*/  '<b>注意</b>：',
 /*27*/  '启用“打包下载”时，需区分多文件名称，\n避免重复而导致打包后只有一个文件，文件命\n名时，必须包含{original}、{index}中至少一个\n标签。',
 /*28*/  '下载视频封面',
+/*29*/  '下载无水印图片',
+/*30*/  '图片质量会下降',
     ];
     let text_en = [
 /*0*/   'Add Download Buttons',
@@ -102,6 +104,8 @@
 /*26*/  '<b>Attention</b>: ',
 /*27*/  'When \'ZIP mode\' enabled, you have \nto include one of the tags {original} or {index} \nto avoid duplicated ones being overwritten.',
 /*28*/  'Download video cover image',
+/*29*/  'Download Images without watermarks',
+/*29*/  'Image quality is lower than those \nwith watermarks',
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -689,7 +693,7 @@
         newList.push({ url: largeVidUrl, name: setName, headerFlag: true });
         if(mediaInfo.hasOwnProperty('pic_info')) {
             let picUrl = mediaInfo.pic_info.pic_big.url;
-            let largePicUrl = picUrl.replace('/orj480/', '/large/');
+            let largePicUrl = picUrl.replace('/orj480/', GM_getValue('rmWtrMrk', false) ? '/oslarge/' : '/large/');
             let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
             let originalName = picName.split('.')[0];
             let ext = picName.split('.')[1];
@@ -703,7 +707,7 @@
         let newList = [];
         let picUrl = pic.largest?.url || pic.pic_big?.url;
         let picSize = picUrl.split('/')[3];
-        let largePicUrl = picUrl.replace('/' + picSize + '/', '/large/');
+        let largePicUrl = picUrl.replace('/' + picSize + '/', GM_getValue('rmWtrMrk', false) ? '/oslarge/' : '/large/');
         let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
         let originalName = picName.split('.')[0];
         let ext = picName.split('.')[1];
@@ -1212,6 +1216,7 @@
         let labelFileName = document.createElement('label');
         labelFileName.textContent = text[7];
         labelFileName.setAttribute('for', 'dlFileName');
+        labelFileName.style.color = "black";
         question2.appendChild(labelFileName);
         let inputFileName = document.createElement('input');
         inputFileName.type = 'text';
@@ -1250,7 +1255,7 @@
         labelZipMode.textContent = text[13];
         labelZipMode.style.display = 'inline-block';
         labelZipMode.style.paddingRight = '0.2rem';
-        labelZipMode.style.color = GM_getValue('ariaMode', false) ? 'gray' : null;
+        labelZipMode.style.color = GM_getValue('ariaMode', false) ? "gray" : "black";
         question3.appendChild(labelZipMode);
         let inputZipMode = document.createElement('input');
         inputZipMode.type = 'checkbox';
@@ -1263,7 +1268,7 @@
         labelPackName.setAttribute('for', 'packFileName');
         labelPackName.style.display = 'block';
         labelPackName.style.marginTop = '0.5rem';
-        labelPackName.style.color = (GM_getValue('zipMode', false) && !GM_getValue('ariaMode', false)) ? null : 'gray';
+        labelPackName.style.color = (GM_getValue('zipMode', false) && !GM_getValue('ariaMode', false)) ? "black" : "gray";
         // labelPackName.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
         question3.appendChild(labelPackName);
         let inputPackName = document.createElement('input');
@@ -1274,7 +1279,7 @@
         inputPackName.style.width = 'calc(100% - 1rem)';
         inputPackName.style.padding = '0.1rem 0.2rem 0.1rem 0.2rem';
         inputPackName.style.borderStyle = 'solid';
-        inputPackName.style.borderColor = (GM_getValue('zipMode', false) && !GM_getValue('ariaMode', false)) ? 'gray' : 'lightgray';
+        inputPackName.style.borderColor = (GM_getValue('zipMode', false) && !GM_getValue('ariaMode', false)) ? 'black' : 'gray';
         inputPackName.style.borderWidth = '0.14rem';
         inputPackName.style.borderRadius = '0.2rem';
         inputPackName.defaultValue = GM_getValue('packFileName', '{mblogid}.zip');
@@ -1299,6 +1304,7 @@
         labelRetweetMode.textContent = text[16];
         labelRetweetMode.style.display = 'inline-block';
         labelRetweetMode.style.paddingRight = '0.2rem';
+        labelRetweetMode.style.color = "black";
         question4.appendChild(labelRetweetMode);
         let inputRetweetMode = document.createElement('input');
         inputRetweetMode.type = 'checkbox';
@@ -1310,7 +1316,7 @@
         labelRetweetFileName.setAttribute('for', 'retweetFileName');
         labelRetweetFileName.style.display = 'block';
         labelRetweetFileName.style.marginTop = '0.5rem';
-        labelRetweetFileName.style.color = GM_getValue('retweetMode', false) ? null : 'gray';
+        labelRetweetFileName.style.color = GM_getValue('retweetMode', false) ? "black" : 'gray';
         // labelPackName.style.display = GM_getValue('retweetMode', false) ? 'block' : 'none';
         question4.appendChild(labelRetweetFileName);
         let inputRetweetFileName = document.createElement('input');
@@ -1341,7 +1347,7 @@
         labelRetweetPackName.setAttribute('for', 'retweetPackFileName');
         labelRetweetPackName.style.display = 'block';
         labelRetweetPackName.style.marginTop = '0.5rem';
-        labelRetweetPackName.style.color = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false) && !GM_getValue('ariaMode', false)) ? null : 'gray';
+        labelRetweetPackName.style.color = (GM_getValue('zipMode', false) && GM_getValue('retweetMode', false) && !GM_getValue('ariaMode', false)) ? "black" : 'gray';
         // labelRetweetPackName.style.display = GM_getValue('zipMode', false) ? 'block' : 'none';
         question4.appendChild(labelRetweetPackName);
         let inputRetweetPackName = document.createElement('input');
@@ -1377,6 +1383,7 @@
         labelAriaMode.textContent = text[21];
         labelAriaMode.style.display = 'inline-block';
         labelAriaMode.style.paddingRight = '0.2rem';
+        labelAriaMode.style.color = 'black';
         question5.appendChild(labelAriaMode);
         let inputAriaMode = document.createElement('input');
         inputAriaMode.type = 'checkbox';
@@ -1394,7 +1401,7 @@
         labelAriaRpcUrl.setAttribute('for', 'ariaRpcUrl');
         labelAriaRpcUrl.style.display = 'block';
         labelAriaRpcUrl.style.marginTop = '0.5rem';
-        labelAriaRpcUrl.style.color = GM_getValue('ariaMode', false) ? null : 'gray';
+        labelAriaRpcUrl.style.color = GM_getValue('ariaMode', false) ? "black" : "gray";
         question5.appendChild(labelAriaRpcUrl);
         let inputAriaRpcUrl = document.createElement('input');
         inputAriaRpcUrl.type = 'text';
@@ -1428,6 +1435,7 @@
         labelDlVidCov.textContent = text[28];
         labelDlVidCov.style.display = 'inline-block';
         labelDlVidCov.style.paddingRight = '0.2rem';
+        labelDlVidCov.style.color = "black";
         question6.appendChild(labelDlVidCov);
         let inputDlVidCov = document.createElement('input');
         inputDlVidCov.type = 'checkbox';
@@ -1435,13 +1443,38 @@
         inputDlVidCov.checked = GM_getValue('dlVidCov', true);
         question6.appendChild(inputDlVidCov);
         modal.appendChild(question6);
+        let question7 = document.createElement('p');
+        question7.style.paddingLeft = '2rem';
+        question7.style.paddingRight = '2rem';
+        question7.style.marginTop = '1rem';
+        question7.style.marginBottom = '0';
+        let labelRmWtrMrk = document.createElement('label');
+        labelRmWtrMrk.setAttribute('for', 'rmWtrMrk');
+        labelRmWtrMrk.textContent = text[29];
+        labelRmWtrMrk.style.display = 'inline-block';
+        labelRmWtrMrk.style.paddingRight = '0.2rem';
+        labelRmWtrMrk.style.color = "black";
+        question7.appendChild(labelRmWtrMrk);
+        let inputRmWtrMrk = document.createElement('input');
+        inputRmWtrMrk.type = 'checkbox';
+        inputRmWtrMrk.id = 'rmWtrMrk';
+        inputRmWtrMrk.checked = GM_getValue('rmWtrMrk', false);
+        question7.appendChild(inputRmWtrMrk);
+        let rmWtrMrkExplain = document.createElement('p');
+        rmWtrMrkExplain.innerHTML = text[30];
+        rmWtrMrkExplain.style.marginTop = '0.5rem';
+        rmWtrMrkExplain.style.marginBottom = '0';
+        rmWtrMrkExplain.style.whiteSpace = 'pre';
+        rmWtrMrkExplain.style.color = 'gray';
+        question7.appendChild(rmWtrMrkExplain);
+        modal.appendChild(question7);
         inputRetweetMode.addEventListener('change', function(event) {
             if (event.currentTarget.checked) {
                 // labelRetweetFileName.style.display = 'block';
                 // inputRetweetFileName.style.display = 'block';
                 // retweetFileNameExplain.style.display = 'block';
                 inputRetweetFileName.disabled = false;
-                labelRetweetFileName.style.color = null;
+                labelRetweetFileName.style.color = "black";
                 inputRetweetFileName.style.borderColor = 'gray';
             } else {
                 // labelRetweetFileName.style.display = 'none';
@@ -1453,7 +1486,7 @@
             }
             if (event.currentTarget.checked && inputZipMode.checked && !inputAriaMode.checked) {
                 inputRetweetPackName.disabled = false;
-                labelRetweetPackName.style.color = null;
+                labelRetweetPackName.style.color = "black";
                 inputRetweetPackName.style.borderColor = 'gray';
             } else {
                 inputRetweetPackName.disabled = true;
@@ -1467,8 +1500,11 @@
                 // inputPackName.style.display = 'block';
                 // filePackExplain.style.display = 'block';
                 inputPackName.disabled = false;
-                labelPackName.style.color = null;
+                labelPackName.style.color = "black";
                 inputPackName.style.borderColor = 'gray';
+                inputAriaMode.disabled = true;
+                labelAriaMode.style.color = "gray";
+                // inputAriaMode.checked = false;
             } else {
                 // labelPackName.style.display = 'none';
                 // inputPackName.style.display = 'none';
@@ -1476,10 +1512,12 @@
                 inputPackName.disabled = true;
                 labelPackName.style.color = 'gray';
                 inputPackName.style.borderColor = 'lightgray';
+                inputAriaMode.disabled = false;
+                labelAriaMode.style.color = "black";
             }
             if (event.currentTarget.checked && inputRetweetMode.checked) {
                 inputRetweetPackName.disabled = false;
-                labelRetweetPackName.style.color = null;
+                labelRetweetPackName.style.color = "black";
                 inputRetweetPackName.style.borderColor = 'gray';
             } else {
                 inputRetweetPackName.disabled = true;
@@ -1492,10 +1530,11 @@
                 // labelAriaRpcUrl.style.display = 'block';
                 // inputAriaRpcUrl.style.display = 'block';
                 inputAriaRpcUrl.disabled = false;
-                labelAriaRpcUrl.style.color = null;
+                labelAriaRpcUrl.style.color = "black";
                 inputAriaRpcUrl.style.borderColor = 'gray';
                 inputZipMode.disabled = true;
                 labelZipMode.style.color = 'gray';
+                // inputZipMode.checked = false;
             } else {
                 // labelAriaRpcUrl.style.display = 'none';
                 // inputAriaRpcUrl.style.display = 'none';
@@ -1503,11 +1542,11 @@
                 labelAriaRpcUrl.style.color = 'gray';
                 inputAriaRpcUrl.style.borderColor = 'lightgray';
                 inputZipMode.disabled = false;
-                labelZipMode.style.color = null;
+                labelZipMode.style.color = "black";
             }
             if (!event.currentTarget.checked && inputZipMode.checked) {
                 inputPackName.disabled = false;
-                labelPackName.style.color = null;
+                labelPackName.style.color = "black";
                 inputPackName.style.borderColor = 'gray';
             } else {
                 inputPackName.disabled = true;
@@ -1516,7 +1555,7 @@
             }
             if (!event.currentTarget.checked && inputZipMode.checked && inputRetweetMode.checked) {
                 inputRetweetPackName.disabled = false;
-                labelRetweetPackName.style.color = null;
+                labelRetweetPackName.style.color = "black";
                 inputRetweetPackName.style.borderColor = 'gray';
             } else {
                 inputRetweetPackName.disabled = true;
@@ -1581,6 +1620,7 @@
             GM_setValue('ariaMode', document.getElementById('ariaMode').checked);
             GM_setValue('ariaRpcUrl', document.getElementById('ariaRpcUrl').value);
             GM_setValue('dlVidCov', document.getElementById('dlVidCov').checked);
+            GM_setValue('rmWtrMrk', document.getElementById('rmWtrMrk').checked);
             GM_setValue('isSet', settingVersion);
             document.body.removeChild(modal);
             document.body.removeChild(bg);
