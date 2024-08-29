@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.0
+// @version      1.3.1
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -267,6 +267,7 @@
             oReq.onerror = (e) => { resolve(null); };
             oReq.onabort = (e) => { resolve(null); };
             oReq.ontimeout = (e) => { resolve(null); };
+            oReq.setRequestHeader('X-XSRF-TOKEN', getCookie('XSRF-TOKEN'));
             if(typeof(data) === 'string') {
                 oReq.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
                 oReq.send(data);
@@ -279,16 +280,29 @@
         });
     }
 
-    function gmHttpRequest(url, method = 'GET', data = null) {
+    function gmHttpRequest(url, method = 'GET', data = null, ua = null) {
         return new Promise(function(resolve, reject) {
+            // console.log(url);
+            let headers = {
+                'Referer': 'https://' + location.host,
+                'Origin': 'https://' + location.host,
+                'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
+            };
+            if(typeof(data) === 'string') {
+                headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            } else if(typeof(data) === 'object') {
+                headers['Content-Type'] = 'application/json;charset=UTF-8';
+            }
+            if(ua) {
+                headers['User-Agent'] = ua;
+            }
+            // console.log(headers)
             GM_xmlhttpRequest({
-                method: 'GET',
+                method,
                 url,
+                data,
                 responseType: 'json',
-                headers: {
-                    'Referer': 'https://' + location.host,
-                    'Origin': 'https://' + location.host
-                },
+                headers,
                 onload: ({ status, response }) => {
                     // console.log(response);
                     resolve(response)
@@ -355,6 +369,20 @@
             if(progress.parent.childElementCount == 1) progress.parent.firstChild.style.display = 'none';
         };
         // setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000);
+    }
+
+    function getCookie(key = null) {
+        let cookiesArr = document.cookie.split('; ');
+        let cookiesObj = {};
+        for (const cookie of cookiesArr) {
+            let [ name, value ] = cookie.split('=');
+            cookiesObj[name] = value;
+        }
+        if (key) {
+            return cookiesObj[key];
+        } else {
+            return cookiesObj;
+        }
     }
 
     function downloadWrapper(url, name, headerFlag = false, zipMode = false) {
@@ -674,8 +702,10 @@
             const urlObj = new URL(mediaInfo.h5_url); // e.g. 'https://video.weibo.com/show?fid=1034:4924511439749139'
             const fid = urlObj.searchParams.get('fid');
             let url = 'https://' + location.host + '/tv/api/component?page=/tv/show/' + fid; // e.g. 'https://weibo.com/tv/api/component?page=/tv/show/1034:4924511439749139'
+            // let url = 'https://h5.video.weibo.com/api/component?page=/show/' + fid; // e.g. 'https://h5.video.weibo.com/api/component?page=/show/1034:5070572795658319'
             let data = 'data={"Component_Play_Playinfo":{"oid":"' + fid + '"}}'; // e.g. 'data={"Component_Play_Playinfo":{"oid":"1034:4924511439749139"}}'
-            let tvRes = await httpRequest(url, 'POST', data);
+            // console.log(url, data);
+            let tvRes = await gmHttpRequest(url, 'POST', data);
             // console.log(tvRes);
             if(tvRes && tvRes.data && tvRes.data.Component_Play_Playinfo && tvRes.data.Component_Play_Playinfo.urls && Object.keys(tvRes.data.Component_Play_Playinfo.urls).length > 0) {
                 largeVidUrl = tvRes.data.Component_Play_Playinfo.urls[Object.keys(tvRes.data.Component_Play_Playinfo.urls)[0]];
@@ -691,8 +721,8 @@
         let ext = vidName.split('.')[1];
         const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
         newList.push({ url: largeVidUrl, name: setName, headerFlag: true });
-        if(mediaInfo.hasOwnProperty('pic_info')) {
-            let picUrl = mediaInfo.pic_info.pic_big.url;
+        if(mediaInfo.hasOwnProperty('big_pic_info')) {
+            let picUrl = mediaInfo.big_pic_info.pic_big.url;
             let largePicUrl = picUrl.replace('/orj480/', GM_getValue('rmWtrMrk', false) ? '/oslarge/' : '/large/');
             let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
             let originalName = picName.split('.')[0];
@@ -774,9 +804,9 @@
                     if(resJson.page_info?.media_info) {
                         downloadList = downloadList.concat(await handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
-                    if(resJson.page_info?.pic_info && GM_getValue('dlVidCov', true)) {
+                    /*if(resJson.page_info?.pic_info && GM_getValue('dlVidCov', true)) {
                         downloadList = downloadList.concat(handlePic(resJson.page_info.pic_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }
+                    }*/
                 }
                 if (picInfos) {
                     // console.log('download images');
@@ -817,6 +847,7 @@
         // console.log(img);
         const imgCtn = img.parentElement;
         const dlBtn = document.createElement('div');
+        dlBtn.style.color = 'dimgray';
         dlBtn.style.position = 'absolute';
         dlBtn.style.bottom = '0';
         dlBtn.style.left = '0';
@@ -828,8 +859,8 @@
         dlBtn.style.cursor = 'pointer';
         dlBtn.style.zIndex = '11';
         dlBtn.innerHTML = '<i class="woo-font woo-font--imgSave"></i>';
-        dlBtn.addEventListener('mouseenter', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.8)'; });
-        dlBtn.addEventListener('mouseleave', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.4)'; });
+        dlBtn.addEventListener('mouseenter', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.8)'; dlBtn.style.color = 'black'; });
+        dlBtn.addEventListener('mouseleave', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.4)'; dlBtn.style.color = 'dimgray'; });
         dlBtn.addEventListener('click', async function(event) {
             event.stopPropagation();
             const article = this.closest('article.woo-panel-main');
