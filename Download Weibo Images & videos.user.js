@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.1
+// @version      1.3.2
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -721,7 +721,7 @@
         let ext = vidName.split('.')[1];
         const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
         newList.push({ url: largeVidUrl, name: setName, headerFlag: true });
-        if(mediaInfo.hasOwnProperty('big_pic_info')) {
+        if(GM_getValue('dlVidCov', true) && mediaInfo.hasOwnProperty('big_pic_info')) {
             let picUrl = mediaInfo.big_pic_info.pic_big.url;
             let largePicUrl = picUrl.replace('/orj480/', GM_getValue('rmWtrMrk', false) ? '/oslarge/' : '/large/');
             let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
