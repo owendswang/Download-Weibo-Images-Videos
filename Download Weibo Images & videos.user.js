@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.4
+// @version      1.3.5
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -23,6 +23,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
+// @grant        GM_cookie
 // @connect      weibo.com
 // @connect      www.weibo.com
 // @connect      sinaimg.cn
@@ -191,42 +192,52 @@
     function send2Aria2c(url, fileName, headerFlag) {
         // console.log(downloadUrl);
         return new Promise(function(resolve, reject) {
-            let header = [ 'User-Agent: ' + window.navigator.userAgent ];
-            if (headerFlag) {
-                header.push('Referer: https://' + location.host);
-                header.push('Origin: https://' + location.host);
-            }
-            downloadQueueTitle.style.display = 'block';
-            let progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
-            progress.firstChild.textContent = fileName;
-            GM_xmlhttpRequest({
-                method: 'POST',
-                url: GM_getValue('ariaRpcUrl','http://localhost:6800/jsonrpc'),
-                data: JSON.stringify({
-                    jsonrpc: '2.0',
-                    id: 'weibo',
-                    method: 'aria2.addUri',
-                    params: [ [ url ], { header, out: fileName } ],
-                }),
-                headers: {"Content-Type": "application/json"},
-                onload: function(response) {
-                    // console.log(response.responseText);
-                    progress.style.background = 'green';
-                    const timeout = setTimeout(() => {
-                        progress.remove();
-                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                    }, 1000);
-                    progress.lastChild.onclick = function(e) {
-                        clearTimeout(timeout);
-                        this.parentNode.remove();
-                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+            GM_cookie.list({ url: '.weibo.com' }, function(cookies, error) {
+                if (error) {
+                    console.error(error);
+                } else {
+                    // console.log(cookies);
+                    let header = [ 'User-Agent: ' + window.navigator.userAgent ];
+                    if (headerFlag) {
+                        header.push('Referer: https://' + location.host);
+                        header.push('Origin: https://' + location.host);
                     }
-                    resolve(response);
-                },
-                onabort: function(e) { resolve(null); },
-                onerror: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
-                ontimeout: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
-            });
+                    if (cookies && cookies.length > 0) {
+                        header.push('Cookie: ' + cookies.map((cookie) => (cookie.name + '=' + cookie.value)).join('; '));
+                    }
+                    downloadQueueTitle.style.display = 'block';
+                    let progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
+                    progress.firstChild.textContent = fileName;
+                    GM_xmlhttpRequest({
+                        method: 'POST',
+                        url: GM_getValue('ariaRpcUrl','http://localhost:6800/jsonrpc'),
+                        data: JSON.stringify({
+                            jsonrpc: '2.0',
+                            id: 'weibo',
+                            method: 'aria2.addUri',
+                            params: [ [ url ], { header, out: fileName } ],
+                        }),
+                        headers: {"Content-Type": "application/json"},
+                        onload: function(response) {
+                            // console.log(response.responseText);
+                            progress.style.background = 'green';
+                            const timeout = setTimeout(() => {
+                                progress.remove();
+                                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                            }, 1000);
+                            progress.lastChild.onclick = function(e) {
+                                clearTimeout(timeout);
+                                this.parentNode.remove();
+                                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                            }
+                            resolve(response);
+                        },
+                        onabort: function(e) { resolve(null); },
+                        onerror: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
+                        ontimeout: function(e) { downloadError(e, url, fileName, headerFlag, progress); resolve(null); },
+                    });
+                }
+            })
             // 下面这种原生的方法，因为安全原因，不被浏览器允许，属于跨域，且在https页面上请求http。
             /*let oReq = new XMLHttpRequest();
             oReq.open("POST", GM_getValue('ariaRpcUrl','http://localhost:6800/jsonrpc'));
@@ -748,7 +759,7 @@
         let originalName = picName.split('.')[0];
         let ext = picName.split('.')[1];
         const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
-        newList.push({ url: downloadUrl, name: setName, headerFlag: true });
+        newList.push({ url: GM_getValue('ariaMode', false) ? largePicUrl : downloadUrl, name: setName, headerFlag: true });
         if(pic.hasOwnProperty('video')) {
             let videoUrl = pic.video;
             let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
