@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.5
+// @version      1.3.6
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -38,6 +38,14 @@
 
 (function() {
     'use strict';
+
+    function sleep(seconds) {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                resolve();
+            }, seconds * 1000);
+        });
+    }
 
     const settingVersion = 1;
 
@@ -76,6 +84,13 @@
 /*30*/  '图片质量会下降',
 /*31*/  '隐藏页面上的设置按钮',
 /*32*/  '可在浏览器扩展Tampermonkey下拉菜单中打开\n设置窗口。',
+/*33*/  '瀑布流下载设置选项：',
+/*34*/  '跳过转发',
+/*35*/  '跳过已下载',
+/*36*/  '连续下载的间隔时间（秒）',
+/*37*/  '此项设置每下载一个动态后等待的秒数，\n避免请求过于频繁而触发API限制。',
+/*38*/  '自动重试次数',
+/*39*/  '连续的下载可能会触发API请求限制而报错，\n此项设置遇到报错后自动重试的次数。'
     ];
     let text_en = [
 /*0*/   'Add Download Buttons',
@@ -111,6 +126,13 @@
 /*30*/  'Image quality is lower than those \nwith watermarks',
 /*31*/  'Hide \'Settings\' button on the web page',
 /*32*/  '\'Settings\' modal could be called \nout by click on the dropdown menu of \nTampermoneky extension.',
+/*33*/  'Scroll list download options',
+/*34*/  'Skip retweet',
+/*35*/  'Skip downloaded',
+/*36*/  'Download interval (seconds)',
+/*37*/  'Seconds to wait after each download\nto prevent IP blocking.',
+/*38*/  'Auto retry attempts',
+/*39*/  'Times to retry if any error occurs.'
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -125,6 +147,7 @@
     downloadQueueCard.style.maxHeight = '50vh';
     downloadQueueCard.style.overflowY = 'auto';
     downloadQueueCard.style.overflowX = 'hidden';
+    downloadQueueCard.style.zIndex = '2147483647';
     let downloadQueueTitle = document.createElement('div');
     downloadQueueTitle.textContent = text[9];
     downloadQueueTitle.style.fontSize = '0.8rem';
@@ -412,8 +435,8 @@
                     url,
                     responseType: 'blob',
                     headers: headerFlag ? {
-                        'Referer': 'https://' + location.host,
-                        'Origin': 'https://' + location.host
+                        'Referer': 'https://' + location.host.replace(/^s\./, ''),
+                        'Origin': 'https://' + location.host.replace(/^s\./, '')
                     } : null,
                     onprogress: (e) => {
                         // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
@@ -509,38 +532,44 @@
                 if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
             };*/
             // 这个方法也可以，而且不是走GM_download，不会被油猴设置里的下载选项影响。
-            const download = GM_xmlhttpRequest({
-                method: 'GET',
-                url,
-                responseType: 'blob',
-                headers: headerFlag ? {
-                    'Referer': 'https://' + location.host,
-                    'Origin': 'https://' + location.host
-                } : null,
-                onprogress: (e) => {
-                    // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
-                    const percent = e.done / e.total * 100;
-                    progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
-                    progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
-                },
-                onload: ({ status, response }) => {
-                    const timeout = setTimeout(() => {
-                        progress.remove();
-                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                    }, 1000);
-                    progress.lastChild.onclick = function(e) {
-                        clearTimeout(timeout);
-                        this.parentNode.remove();
-                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                    };
-                    saveAs(response, name);
-                },
+            return new Promise(function(resolve, reject) {
+                const download = GM_xmlhttpRequest({
+                    method: 'GET',
+                    url,
+                    responseType: 'blob',
+                    headers: headerFlag ? {
+                        'Referer': 'https://' + location.host,
+                        'Origin': 'https://' + location.host
+                    } : null,
+                    onprogress: (e) => {
+                        // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
+                        const percent = e.done / e.total * 100;
+                        progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
+                        progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
+                    },
+                    onload: ({ status, response }) => {
+                        const timeout = setTimeout(() => {
+                            progress.remove();
+                            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                        }, 1000);
+                        progress.lastChild.onclick = function(e) {
+                            clearTimeout(timeout);
+                            this.parentNode.remove();
+                            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                        };
+                        saveAs(response, name);
+                        resolve(null);
+                    },
+                    onabort: function(e) { resolve(null); },
+                    onerror: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
+                    ontimeout: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
+                });
+                progress.lastChild.onclick = function(e) {
+                    download.abort();
+                    this.parentNode.remove();
+                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                };
             });
-            progress.lastChild.onclick = function(e) {
-                download.abort();
-                this.parentNode.remove();
-                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-            };
             // 下面这种原生的方法，可以正常下载非V+的资源，遇到V+的资源会报错。
             /*let oReq = new XMLHttpRequest();
             oReq.open("GET", url);
@@ -678,10 +707,10 @@
         return setName.replace(/[<|>|*|"|\/|\|:|?|\n]/g, '_');
     }
 
-    function handleDownloadList(downloadList, packName) {
+    async function handleDownloadList(downloadList, packName) {
         if (GM_getValue('ariaMode', false)) {
             for (const item of downloadList) {
-                send2Aria2c(item.url, item.name, item.headerFlag);
+                await send2Aria2c(item.url, item.name, item.headerFlag);
             }
         } else if (GM_getValue('zipMode', false)) {
             let zip = new JSZip();
@@ -695,24 +724,25 @@
                 });
             });
             // console.log('promises', promises);
-            Promise.all(promises).then(async function(responseList) {
-                // console.log('responseList', responseList);
-                // console.log('zip', zip);
-                // console.log('generateAsync', zip.generateAsync());
-                const content = await zip.generateAsync({ type: 'blob', streamFiles: true }/*, function({ percent, currentFile }) { console.log(percent); }*/);
-                // console.log('content', content);
-                if (zip.files && Object.keys(zip.files).length > 0) saveAs(content, packName);
-            });
+            const responseList = await Promise.all(promises);
+            // console.log('responseList', responseList);
+            // console.log('zip', zip);
+            // console.log('generateAsync', zip.generateAsync());
+            const content = await zip.generateAsync({ type: 'blob', streamFiles: true }/*, function({ percent, currentFile }) { console.log(percent); }*/);
+            // console.log('content', content);
+            if (zip.files && Object.keys(zip.files).length > 0) saveAs(content, packName);
         } else {
-            for (const item of downloadList) {
-                downloadWrapper(item.url, item.name, item.headerFlag);
-            }
+            let promises = downloadList.map(function(item, idx) {
+                return downloadWrapper(item.url, item.name, item.headerFlag);
+            });
+            await Promise.all(promises);
         }
     }
 
     async function handleVideo(mediaInfo, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText) {
         const newList = [];
         let largeVidUrl = mediaInfo.playback_list ? mediaInfo.playback_list[0].play_info.url : ( mediaInfo.mp4_hd_url || mediaInfo.stream_url_hd || mediaInfo.stream_url );
+        // console.log('largeVidUrl: ', largeVidUrl);
         if(mediaInfo.hasOwnProperty('h5_url') && mediaInfo.h5_url) {
             const urlObj = new URL(mediaInfo.h5_url); // e.g. 'https://video.weibo.com/show?fid=1034:4924511439749139'
             const fid = urlObj.searchParams.get('fid');
@@ -759,7 +789,7 @@
         let originalName = picName.split('.')[0];
         let ext = picName.split('.')[1];
         const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
-        newList.push({ url: GM_getValue('ariaMode', false) ? largePicUrl : downloadUrl, name: setName, headerFlag: true });
+        newList.push({ url: downloadUrl, name: setName, headerFlag: true });
         if(pic.hasOwnProperty('video')) {
             let videoUrl = pic.video;
             let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
@@ -774,8 +804,105 @@
         return newList;
     }
 
-    function addDlBtn(footer) {
+    async function handlePostDownloadById(id, idx = -1) {
+        let resJson;
+        if (location.host == 's.weibo.com') {
+            resJson = await gmHttpRequest('https://weibo.com/ajax/statuses/show?id=' + id);
+        } else {
+            resJson = await httpRequest('https://' + location.host + '/ajax/statuses/show?id=' + id);
+        }
+        // console.log(resJson);
+        let status = resJson;
+        let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
+        if(resJson.hasOwnProperty('retweeted_status')) {
+            status = resJson.retweeted_status;
+            retweetPostId = resJson.mblogid;
+            retweetUserName = resJson.user.screen_name;
+            retweetUserId = resJson.user.idstr;
+            retweetPostUid = resJson.idstr;
+            retweetPostTime = resJson.created_at;
+            retweetText = resJson.text_raw;
+        }
+        const postId = status.mblogid;
+        const picInfos = status.pic_infos;
+        const picIds = status.pic_ids;
+        const mixMediaInfo = status.mix_media_info;
+        const userName = status.user.screen_name;
+        const userId = status.user.idstr;
+        const postUid = status.idstr;
+        const postTime = status.created_at;
+        const text = status.text_raw;
+        const pageInfo = status.page_info || resJson.page_info;
+        let downloadList = [];
+        if (picInfos) {
+            // console.log('download images');
+            let padLength = Object.entries(picInfos).length.toString().length;
+            if (idx === -1) {
+                let index = 0;
+                for (const [id, pic] of Object.entries(picInfos)) {
+                    index += 1;
+                    downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                }
+            } else {
+                // console.log(idx, picInfos);
+                const pic = Object.entries(picInfos)[idx][1];
+                downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+            }
+        }
+        /*if (picIds) {
+            // console.log('download images');
+            let padLength = picIds.length.toString().length;
+            // console.log(idx, picInfos);
+            const picId = picIds[idx];
+            downloadList = downloadList.concat(handlePic(picId, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+        }*/
+        if (mixMediaInfo && mixMediaInfo.items) {
+            // console.log('mix media');
+            // console.log(mixMediaInfo.items);
+            let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
+            if (idx === -1) {
+                let index = 0;
+                for (const [id, media] of Object.entries(mixMediaInfo.items)) {
+                    index += 1;
+                    if(media.type === 'video') {
+                        downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        if (GM_getValue('dlVidCov', true)) {
+                            downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                        }
+                    } else if (media.type === 'pic') {
+                        downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                    }
+                }
+            } else {
+                const media = Object.entries(mixMediaInfo.items)[idx][1];
+                if(media.type === 'video') {
+                    downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                    if(GM_getValue('dlVidCov', true)) {
+                        downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                    }
+                } else if (media.type === 'pic') {
+                    downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+                }
+            }
+        }
+        if (pageInfo && pageInfo.media_info) {
+            downloadList = downloadList.concat(await handleVideo(pageInfo.media_info, 0, userName, userId, postId, postUid, 0, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
+        }
+        const packName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetPackFileName', '{mblogid}.zip') : GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
+        return [downloadList, packName];
+    }
+
+    function addDlBtn(card) {
         // console.log('add download button');
+        const footer = card.querySelectorAll('footer')[1] || card.querySelector('footer');
+        const header = card.getElementsByTagName('header')[0];
+        const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
+        const postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
+        let retweetPostId;
+        const retweetPostLink = card.querySelector('div.retweet a.head-info_time_6sFQg');
+        if (retweetPostLink) {
+            retweetPostId = retweetPostLink.href.split('/')[retweetPostLink.href.split('/').length - 1];
+        }
         let dlBtnDiv = document.createElement('div');
         dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V';
         let divInDiv = document.createElement('div');
@@ -784,85 +911,15 @@
         dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz download-button';
         dlBtn.setAttribute('tabindex', '0');
         dlBtn.setAttribute('title', '下载');
-        // dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
-        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><i class="woo-font woo-font--imgSave woo-like-icon"></i></span><span class="woo-like-count">下载</span>';
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><i class="woo-font woo-font--imgSave woo-like-icon"></i></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
         dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
-            const article = this.closest('article.woo-panel-main');
-            if(article) {
-                // let contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
-                const header = article.getElementsByTagName('header')[0];
-                const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
-                let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                const resJson = await httpRequest('https://' + location.host + '/ajax/statuses/show?id=' + postId);
-                // console.log(resJson);
-                let status = resJson;
-                let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
-                if(resJson.hasOwnProperty('retweeted_status')) {
-                    status = resJson.retweeted_status;
-                    retweetPostId = resJson.mblogid;
-                    retweetUserName = resJson.user.screen_name;
-                    retweetUserId = resJson.user.idstr;
-                    retweetPostUid = resJson.idstr;
-                    retweetPostTime = resJson.created_at;
-                    retweetText = resJson.text_raw;
-                }
-                postId = status.mblogid;
-                const picInfos = status.pic_infos;
-                const picIds = status.pic_ids;
-                const mixMediaInfo = status.mix_media_info;
-                const userName = status.user.screen_name;
-                const userId = status.user.idstr;
-                const postUid = status.idstr;
-                const postTime = status.created_at;
-                const text = status.text_raw;
-                let downloadList = [];
-                if(footer.parentElement.getElementsByTagName('video').length > 0) {
-                    // console.log('download video');
-                    if(resJson.page_info?.media_info) {
-                        downloadList = downloadList.concat(await handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }
-                    /*if(resJson.page_info?.pic_info && GM_getValue('dlVidCov', true)) {
-                        downloadList = downloadList.concat(handlePic(resJson.page_info.pic_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }*/
-                }
-                if (picInfos) {
-                    // console.log('download images');
-                    let index = 0;
-                    let padLength = Object.entries(picInfos).length.toString().length;
-                    for (const [id, pic] of Object.entries(picInfos)) {
-                        index += 1;
-                        downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }
-                }
-                /*if (picIds) {
-                    // console.log('download images');
-                    let index = 0;
-                    let padLength = picIds.length.toString().length;
-                    for (const picId of Object.entries(picIds)) {
-                        index += 1;
-                        downloadList = downloadList.concat(handlePic(picId, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }
-                }*/
-                if (mixMediaInfo && mixMediaInfo.items) {
-                    // console.log('mix media');
-                    let index = 0;
-                    let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
-                    for (const [id, media] of Object.entries(mixMediaInfo.items)) {
-                        index += 1;
-                        if(media.type === 'video') {
-                            downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                            if (GM_getValue('dlVidCov', true)) {
-                                downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                            }
-                        } else if (media.type === 'pic') {
-                            downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                        }
-                    }
-                }
-                const packName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetPackFileName', '{mblogid}.zip') : GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
-                handleDownloadList(downloadList, packName);
-            }
+            const dlBtnText = dlBtn.querySelector('span.woo-like-count');
+            dlBtnText.textContent = '下载中';
+            const [downloadList, packName] = await handlePostDownloadById(postId);
+            await handleDownloadList(downloadList, packName);
+            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+            dlBtnText.textContent = '已下载';
         });
         divInDiv.appendChild(dlBtn);
         dlBtnDiv.appendChild(divInDiv);
@@ -872,6 +929,96 @@
 
     function addSingleDlBtn(img, idx = 0) {
         // console.log(img);
+        const card = img.closest('article.woo-panel-main');
+        const imgCtn = img.parentElement;
+        const dlBtn = document.createElement('div');
+        const header = card.getElementsByTagName('header')[0];
+        const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
+        const postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
+        let retweetPostId;
+        const retweetPostLink = card.querySelector('div.retweet a.head-info_time_6sFQg');
+        if (retweetPostLink) {
+            retweetPostId = retweetPostLink.href.split('/')[retweetPostLink.href.split('/').length - 1];
+        }
+        dlBtn.style.color = 'dimgray';
+        dlBtn.style.position = 'absolute';
+        dlBtn.style.bottom = '0';
+        dlBtn.style.left = '0';
+        dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
+        dlBtn.style.padding = '0.3rem';
+        dlBtn.style.borderRadius = '0 8px';
+        dlBtn.style.width = '1rem';
+        dlBtn.style.height = '1rem';
+        dlBtn.style.cursor = 'pointer';
+        dlBtn.style.zIndex = '11';
+        dlBtn.innerHTML = '<i class="woo-font woo-font--imgSave"></i>';
+        dlBtn.addEventListener('mouseenter', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.8)'; dlBtn.style.color = 'black'; });
+        dlBtn.addEventListener('mouseleave', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.4)'; dlBtn.style.color = 'dimgray'; });
+        dlBtn.addEventListener('click', async function(event) {
+            event.stopPropagation();
+            const dlBtnText = card.querySelector('button.download-button').querySelector('span.woo-like-count');
+            dlBtnText.textContent = '下载中';
+            const [downloadList, packName] = await handlePostDownloadById(postId, idx);
+            await handleDownloadList(downloadList, packName);
+            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+            dlBtnText.textContent = '已下载';
+        });
+        imgCtn.appendChild(dlBtn);
+    }
+
+    function sAddDlBtn(card) {
+        // console.log('add download button on search');
+        const footer = card.querySelector('.card-act');
+        const from = card.querySelector('div.from > a');
+        const postUrl = from.href.split('?')[0];
+        const postId = postUrl.split('/')[postUrl.split('/').length - 1];
+        let retweetPostId;
+        const retweetPostLink = card.querySelector('div.card-comment div.from > a');
+        if (retweetPostLink) {
+            const retweetPostUrl = retweetPostLink.href.split('?')[0];
+            retweetPostId = retweetPostUrl.split('/')[retweetPostUrl.split('/').length - 1];
+        }
+        const lis = footer.getElementsByTagName('li');
+        for (const li of lis) {
+            li.style.width = '25%';
+        }
+        let dlBtnLi = document.createElement('li');
+        dlBtnLi.style.width = '25%';
+        let aInLi = document.createElement('a');
+        aInLi.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter';
+        aInLi.setAttribute('title', '下载');
+        aInLi.setAttribute('href', 'javascript:void(0);');
+        let dlBtn = document.createElement('button');
+        dlBtn.className = 'woo-like-main toolbar_btn download-button';
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
+        aInLi.addEventListener('click', function(event) { event.preventDefault(); });
+        dlBtn.addEventListener('click', async function(event) {
+            event.preventDefault();
+            const dlBtnText = dlBtn.querySelector('span.woo-like-count');
+            dlBtnText.textContent = '下载中';
+            const [downloadList, packName] = await handlePostDownloadById(postId);
+            await handleDownloadList(downloadList, packName);
+            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+            dlBtnText.textContent = '已下载';
+        });
+        aInLi.appendChild(dlBtn);
+        dlBtnLi.appendChild(dlBtn);
+        footer.firstChild.appendChild(dlBtnLi);
+        // console.log('added download button');
+    }
+
+    function sAddSingleDlBtn(img, idx = 0) {
+        // console.log(img);
+        const card = img.closest('div.card-wrap');
+        const from = card.querySelector('div.from > a');
+        const postUrl = from.href.split('?')[0];
+        const postId = postUrl.split('/')[postUrl.split('/').length - 1];
+        let retweetPostId;
+        const retweetPostLink = card.querySelector('div.card-comment div.from > a');
+        if (retweetPostLink) {
+            const retweetPostUrl = retweetPostLink.href.split('?')[0];
+            retweetPostId = retweetPostUrl.split('/')[retweetPostUrl.split('/').length - 1];
+        }
         const imgCtn = img.parentElement;
         const dlBtn = document.createElement('div');
         dlBtn.style.color = 'dimgray';
@@ -890,170 +1037,16 @@
         dlBtn.addEventListener('mouseleave', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.4)'; dlBtn.style.color = 'dimgray'; });
         dlBtn.addEventListener('click', async function(event) {
             event.stopPropagation();
-            const article = this.closest('article.woo-panel-main');
-            if(article) {
-                // let contentRow = article.getElementsByClassName('content_row_-r5Tk')[0];
-                const header = article.getElementsByTagName('header')[0];
-                const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
-                let postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
-                const resJson = await httpRequest('https://' + location.host + '/ajax/statuses/show?id=' + postId);
-                // console.log(resJson);
-                let status = resJson;
-                let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
-                if(resJson.hasOwnProperty('retweeted_status')) {
-                    status = resJson.retweeted_status;
-                    retweetPostId = resJson.mblogid;
-                    retweetUserName = resJson.user.screen_name;
-                    retweetUserId = resJson.user.idstr;
-                    retweetPostUid = resJson.idstr;
-                    retweetPostTime = resJson.created_at;
-                    retweetText = resJson.text_raw;
-                }
-                postId = status.mblogid;
-                const picInfos = status.pic_infos;
-                const picIds = status.pic_ids;
-                const mixMediaInfo = status.mix_media_info;
-                const userName = status.user.screen_name;
-                const userId = status.user.idstr;
-                const postUid = status.idstr;
-                const postTime = status.created_at;
-                const text = status.text_raw;
-                let downloadList = [];
-                if (picInfos) {
-                    // console.log('download images');
-                    let padLength = Object.entries(picInfos).length.toString().length;
-                    // console.log(idx, picInfos);
-                    const pic = Object.entries(picInfos)[idx][1];
-                    downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                }
-                /*if (picIds) {
-                    // console.log('download images');
-                    let padLength = picIds.length.toString().length;
-                    // console.log(idx, picInfos);
-                    const picId = picIds[idx];
-                    downloadList = downloadList.concat(handlePic(picId, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                }*/
-                if (mixMediaInfo && mixMediaInfo.items) {
-                    // console.log('mix media');
-                    // console.log(mixMediaInfo.items);
-                    let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
-                    const media = Object.entries(mixMediaInfo.items)[idx][1];
-                    if(media.type === 'video') {
-                        downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                        if(GM_getValue('dlVidCov', true)) {
-                            downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                        }
-                    } else if (media.type === 'pic') {
-                        downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }
-                }
-                const packName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetPackFileName', '{mblogid}.zip') : GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
-                handleDownloadList(downloadList, packName);
-            }
+            const dlBtnText = card.querySelector('button.download-button').querySelector('span.woo-like-count');
+            dlBtnText.textContent = '下载中';
+            const [downloadList, packName] = await handlePostDownloadById(postId, idx);
+            await handleDownloadList(downloadList, packName);
+            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+            dlBtnText.textContent = '已下载';
         });
         imgCtn.appendChild(dlBtn);
     }
 
-    function sAddDlBtn(footer) {
-        // console.log('add download button on search');
-        const lis = footer.getElementsByTagName('li');
-        for (const li of lis) {
-            li.style.width = '25%';
-        }
-        let dlBtnLi = document.createElement('li');
-        dlBtnLi.style.width = '25%';
-        let aInLi = document.createElement('a');
-        aInLi.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter';
-        aInLi.setAttribute('title', '下载');
-        aInLi.setAttribute('href', 'javascript:void(0);');
-        let dlBtn = document.createElement('button');
-        dlBtn.className = 'woo-like-main toolbar_btn download-button';
-        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">下载</span>';
-        aInLi.addEventListener('click', function(event) { event.preventDefault(); });
-        dlBtn.addEventListener('click', async function(event) {
-            // console.log('download');
-            event.preventDefault();
-            const cardWrap = this.closest('div.card-wrap');
-            // console.log(cardWrap);
-            const mid = cardWrap.getAttribute('mid');
-            // console.log(mid);
-            if(mid) {
-                // console.log('https://' + location.host + '/ajax/statuses/show?id=' + mid);
-                const resJson = await gmHttpRequest('https://weibo.com/ajax/statuses/show?id=' + mid);
-                // console.log(resJson);
-                let status = resJson;
-                let retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText;
-                if(resJson.hasOwnProperty('retweeted_status')) {
-                    status = resJson.retweeted_status;
-                    retweetPostId = resJson.mblogid;
-                    retweetUserName = resJson.user.screen_name;
-                    retweetUserId = resJson.user.idstr;
-                    retweetPostUid = resJson.idstr;
-                    retweetPostTime = resJson.created_at;
-                    retweetText = resJson.text_raw;
-                }
-                const postId = status.mblogid;
-                const picInfos = status.pic_infos;
-                const picIds = status.pic_ids;
-                const mixMediaInfo = status.mix_media_info;
-                const userName = status.user.screen_name;
-                const userId = status.user.idstr;
-                const postUid = status.idstr;
-                const postTime = status.created_at;
-                const text = status.text_raw;
-                let downloadList = [];
-                if(footer.parentElement.getElementsByTagName('video').length > 0) {
-                    // console.log('download video');
-                    if(resJson.page_info?.media_info) {
-                        downloadList = downloadList.concat(await handleVideo(resJson.page_info.media_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }
-                    if(resJson.page_info?.pic_info && GM_getValue('dlVidCov', true)) {
-                        downloadList = downloadList.concat(handlePic(resJson.page_info.pic_info, 1, userName, userId, postId, postUid, 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }
-                }
-                if (picInfos) {
-                    // console.log('download images');
-                    let index = 0;
-                    let padLength = Object.entries(picInfos).length.toString().length;
-                    for (const [id, pic] of Object.entries(picInfos)) {
-                        index += 1;
-                        downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }
-                }
-                /*if (picIds) {
-                    // console.log('download images');
-                    let index = 0;
-                    let padLength = picIds.length.toString().length;
-                    for (const picId of picIds) {
-                        index += 1;
-                        downloadList = downloadList.concat(handlePic(picId, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                    }
-                }*/
-                if (mixMediaInfo && mixMediaInfo.items) {
-                    // console.log('mix media');
-                    let index = 0;
-                    let padLength = Object.entries(mixMediaInfo.items).length.toString().length;
-                    for (const [id, media] of Object.entries(mixMediaInfo.items)) {
-                        index += 1;
-                        if(media.type === 'video') {
-                            downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                            if(GM_getValue('dlVidCov', true)) {
-                                downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                            }
-                        } else if (media.type === 'pic') {
-                            downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
-                        }
-                    }
-                }
-                const packName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetPackFileName', '{mblogid}.zip') : GM_getValue('packFileName', '{mblogid}.zip'), '{original}', '{ext}', userName, userId, postId, postUid, '{index}', postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
-                handleDownloadList(downloadList, packName);
-            }
-        });
-        aInLi.appendChild(dlBtn);
-        dlBtnLi.appendChild(dlBtn);
-        footer.firstChild.appendChild(dlBtnLi);
-        // console.log('added download button');
-    }
 /*
     function bodyMouseOver(event) {
         if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
@@ -1132,28 +1125,55 @@
                 // console.log(footer.parentElement);
                 let added = false;
                 if (imgs.length > 0) {
-                    addDlBtn(footer);
+                    addDlBtn(card);
                     added = true;
                     if (imgs.length > 1) {
                         for (const [ idx, img ] of Object.entries(imgs)) {
                             if (img.parentElement.getElementsByClassName('download-single-button').length === 0) {
-                                if (img.className.includes('picture-viewer_pic_37YQ3')) {
-                                    const previews = card.querySelectorAll('div.picture-viewer_preview_2wOSq');
-                                    for (const [ index, preview ] of Object.entries(previews)) {
-                                        if (preview.className.includes('picture-viewer_cur_anUEY')) {
-                                            addSingleDlBtn(img, parseInt(index));
-                                        }
-                                    }
-                                } else {
-                                    addSingleDlBtn(img, parseInt(idx));
-                                }
+                                addSingleDlBtn(img, parseInt(idx));
                             }
                         }
                     }
                 }
                 let videos = card.getElementsByTagName('video');
                 if(videos.length > 0 && added == false) {
-                    addDlBtn(footer);
+                    addDlBtn(card);
+                }
+            }
+        }
+    }
+
+    function sHandleCard(card) {
+        const footer = card.querySelector('.card-act');
+        const imgs = card.querySelectorAll('ul>li>img');
+        if (footer) {
+            if(footer.getElementsByClassName('download-button').length > 0) {
+                // console.log('already added download button');
+            } else {
+                // console.log(footer.parentElement);
+                if(footer.parentElement.className == 'card' && footer.parentElement.parentElement.className == 'card-wrap') {
+                    const card = footer.parentElement;
+                    let added = false;
+                    const media_prev = card.querySelector('div[node-type="feed_list_media_prev"]');
+                    // console.log(media_prev);
+                    if (media_prev) {
+                        // console.log(imgs);
+                        if(imgs.length > 0) {
+                            sAddDlBtn(card);
+                            added = true;
+                            if (imgs.length > 1) {
+                                for (const [ idx, img ] of Object.entries(imgs)) {
+                                    if (img.parentElement.getElementsByClassName('download-single-button').length === 0) {
+                                        sAddSingleDlBtn(img, parseInt(idx));
+                                    }
+                                }
+                            }
+                        }
+                        const videos = card.getElementsByTagName('video');
+                        if(videos.length > 0 && added == false) {
+                            sAddDlBtn(card);
+                        }
+                    }
                 }
             }
         }
@@ -1569,6 +1589,110 @@
         hidSetBtnExplain.style.color = 'gray';
         question8.appendChild(hidSetBtnExplain);
         modal.appendChild(question8);
+        let question9 = document.createElement('p');
+        question9.style.paddingLeft = '2rem';
+        question9.style.paddingRight = '2rem';
+        question9.style.marginTop = '1rem';
+        question9.style.marginBottom = '0';
+        let question9Title = document.createElement('div');
+        question9Title.textContent = text[33];
+        question9Title.style.fontWeight = 'bold';
+        question9Title.style.lineHeight = '2rem';
+        question9Title.style.color = 'black';
+        question9.appendChild(question9Title);
+        let labelListDownloadSkipRetweet = document.createElement('label');
+        labelListDownloadSkipRetweet.setAttribute('for', 'listDownloadSkipRetweet');
+        labelListDownloadSkipRetweet.textContent = text[34];
+        labelListDownloadSkipRetweet.style.display = 'inline-block';
+        labelListDownloadSkipRetweet.style.paddingRight = '0.2rem';
+        labelListDownloadSkipRetweet.style.marginTop = '0.5rem';
+        labelListDownloadSkipRetweet.style.marginBottom = '0.5rem';
+        labelListDownloadSkipRetweet.style.color = 'black';
+        question9.appendChild(labelListDownloadSkipRetweet);
+        let inputListDownloadSkipRetweet = document.createElement('input');
+        inputListDownloadSkipRetweet.type = 'checkbox';
+        inputListDownloadSkipRetweet.id = 'listDownloadSkipRetweet';
+        inputListDownloadSkipRetweet.name = 'listDownloadSkipRetweet';
+        inputListDownloadSkipRetweet.style.marginTop = '0.5rem';
+        inputListDownloadSkipRetweet.checked = GM_getValue('listDownloadSkipRetweet', true);
+        question9.appendChild(inputListDownloadSkipRetweet);
+        question9.appendChild(document.createElement('br'));
+        let labelListDownloadSkipAlreadyDownloaded = document.createElement('label');
+        labelListDownloadSkipAlreadyDownloaded.setAttribute('for', 'listDownloadSkipAlreadyDownloaded');
+        labelListDownloadSkipAlreadyDownloaded.textContent = text[35];
+        labelListDownloadSkipAlreadyDownloaded.style.display = 'inline-block';
+        labelListDownloadSkipAlreadyDownloaded.style.paddingRight = '0.2rem';
+        labelListDownloadSkipAlreadyDownloaded.style.marginTop = '0.5rem';
+        labelListDownloadSkipAlreadyDownloaded.style.marginBottom = '0.5rem';
+        labelListDownloadSkipAlreadyDownloaded.style.color = 'black';
+        question9.appendChild(labelListDownloadSkipAlreadyDownloaded);
+        let inputListDownloadSkipAlreadyDownloaded = document.createElement('input');
+        inputListDownloadSkipAlreadyDownloaded.type = 'checkbox';
+        inputListDownloadSkipAlreadyDownloaded.id = 'listDownloadSkipAlreadyDownloaded';
+        inputListDownloadSkipAlreadyDownloaded.name = 'listDownloadSkipAlreadyDownloaded';
+        inputListDownloadSkipAlreadyDownloaded.style.marginTop = '0.5rem';
+        inputListDownloadSkipAlreadyDownloaded.checked = GM_getValue('listDownloadSkipAlreadyDownloaded', true);
+        question9.appendChild(inputListDownloadSkipAlreadyDownloaded);
+        question9.appendChild(document.createElement('br'));
+        let labelListDownloadSleepGapSeconds = document.createElement('label');
+        labelListDownloadSleepGapSeconds.setAttribute('for', 'listDownloadSleepGapSeconds');
+        labelListDownloadSleepGapSeconds.textContent = text[36];
+        labelListDownloadSleepGapSeconds.style.display = 'inline-block';
+        labelListDownloadSleepGapSeconds.style.paddingRight = '0.2rem';
+        labelListDownloadSleepGapSeconds.style.marginTop = '0.5rem';
+        labelListDownloadSleepGapSeconds.style.color = 'black';
+        question9.appendChild(labelListDownloadSleepGapSeconds);
+        let inputListDownloadSleepGapSeconds = document.createElement('input');
+        inputListDownloadSleepGapSeconds.type = 'number';
+        inputListDownloadSleepGapSeconds.id = 'listDownloadSleepGapSeconds';
+        inputListDownloadSleepGapSeconds.name = 'listDownloadSleepGapSeconds';
+        inputListDownloadSleepGapSeconds.style.marginTop = '0.5rem';
+        inputListDownloadSleepGapSeconds.style.width = '3rem';
+        inputListDownloadSleepGapSeconds.style.padding = '0.1rem 0.2rem 0.1rem 0.2rem';
+        inputListDownloadSleepGapSeconds.style.borderStyle = 'solid';
+        inputListDownloadSleepGapSeconds.style.borderWidth = '0.14rem';
+        inputListDownloadSleepGapSeconds.style.borderRadius = '0.2rem';
+        inputListDownloadSleepGapSeconds.style.borderColor = 'gray';
+        inputListDownloadSleepGapSeconds.defaultValue = GM_getValue('listDownloadSleepGapSeconds', 2);
+        question9.appendChild(inputListDownloadSleepGapSeconds);
+        let listDownloadSleepGapSecondsExplain = document.createElement('p');
+        listDownloadSleepGapSecondsExplain.innerHTML = text[37];
+        listDownloadSleepGapSecondsExplain.style.marginTop = '0.5rem';
+        listDownloadSleepGapSecondsExplain.style.marginBottom = '0';
+        listDownloadSleepGapSecondsExplain.style.whiteSpace = 'pre';
+        listDownloadSleepGapSecondsExplain.style.color = 'gray';
+        listDownloadSleepGapSecondsExplain.style.lineHeight = '1.1rem';
+        question9.appendChild(listDownloadSleepGapSecondsExplain);
+        let labelListDownloadRetryAttempsLimit = document.createElement('label');
+        labelListDownloadRetryAttempsLimit.setAttribute('for', 'listDownloadRetryAttempsLimit');
+        labelListDownloadRetryAttempsLimit.textContent = text[38];
+        labelListDownloadRetryAttempsLimit.style.display = 'inline-block';
+        labelListDownloadRetryAttempsLimit.style.paddingRight = '0.2rem';
+        labelListDownloadRetryAttempsLimit.style.marginTop = '0.5rem';
+        labelListDownloadRetryAttempsLimit.style.color = 'black';
+        question9.appendChild(labelListDownloadRetryAttempsLimit);
+        let inputListDownloadRetryAttempsLimit = document.createElement('input');
+        inputListDownloadRetryAttempsLimit.type = 'number';
+        inputListDownloadRetryAttempsLimit.id = 'listDownloadRetryAttempsLimit';
+        inputListDownloadRetryAttempsLimit.name = 'listDownloadRetryAttempsLimit';
+        inputListDownloadRetryAttempsLimit.style.marginTop = '0.5rem';
+        inputListDownloadRetryAttempsLimit.style.width = '3rem';
+        inputListDownloadRetryAttempsLimit.style.padding = '0.1rem 0.2rem 0.1rem 0.2rem';
+        inputListDownloadRetryAttempsLimit.style.borderStyle = 'solid';
+        inputListDownloadRetryAttempsLimit.style.borderWidth = '0.14rem';
+        inputListDownloadRetryAttempsLimit.style.borderRadius = '0.2rem';
+        inputListDownloadRetryAttempsLimit.style.borderColor = 'gray';
+        inputListDownloadRetryAttempsLimit.defaultValue = GM_getValue('listDownloadRetryAttempsLimit', 3);
+        question9.appendChild(inputListDownloadRetryAttempsLimit);
+        let listDownloadRetryAttempsLimitExplain = document.createElement('p');
+        listDownloadRetryAttempsLimitExplain.innerHTML = text[39];
+        listDownloadRetryAttempsLimitExplain.style.marginTop = '0.5rem';
+        listDownloadRetryAttempsLimitExplain.style.marginBottom = '0';
+        listDownloadRetryAttempsLimitExplain.style.whiteSpace = 'pre';
+        listDownloadRetryAttempsLimitExplain.style.color = 'gray';
+        listDownloadRetryAttempsLimitExplain.style.lineHeight = '1.1rem';
+        question9.appendChild(listDownloadRetryAttempsLimitExplain);
+        // modal.appendChild(question9);
         inputRetweetMode.addEventListener('change', function(event) {
             if (event.currentTarget.checked) {
                 // labelRetweetFileName.style.display = 'block';
@@ -1723,6 +1847,12 @@
             GM_setValue('dlVidCov', document.getElementById('dlVidCov').checked);
             GM_setValue('rmWtrMrk', document.getElementById('rmWtrMrk').checked);
             GM_setValue('hidSetBtn', document.getElementById('hidSetBtn').checked);
+            // GM_setValue('listDownloadSkipRetweet', document.getElementById('listDownloadSkipRetweet').checked);
+            // GM_setValue('listDownloadSkipAlreadyDownloaded', document.getElementById('listDownloadSkipAlreadyDownloaded').checked);
+            // const listDownloadRetryAttempsLimitValue = document.getElementById('listDownloadRetryAttempsLimit').value;
+            // GM_setValue('listDownloadRetryAttempsLimit', isNaN(Math.round(listDownloadRetryAttempsLimitValue)) ? 3 : Math.round(listDownloadRetryAttempsLimitValue));
+            // const listDownloadSleepGapSecondsValue = document.getElementById('listDownloadSleepGapSeconds').value;
+            // GM_setValue('listDownloadSleepGapSeconds', isNaN(Math.round(listDownloadSleepGapSecondsValue)) ? 2 : Math.round(listDownloadSleepGapSecondsValue));
             GM_setValue('isSet', settingVersion);
             let setBtn = document.getElementById('wbDlSetBtn');
             if (setBtn) {
@@ -1794,28 +1924,54 @@
                 }
             }
         } else if (location.host == 's.weibo.com') {
-            // let cards = document.querySelectorAll('#pl_feedlist_index .card-wrap');
-            const footers = document.querySelectorAll('#pl_feedlist_index .card-act');
-            for (const footer of footers) {
-                if(footer.getElementsByClassName('download-button').length > 0) {
-                    // console.log('already added download button');
-                } else {
-                    // console.log(footer.parentElement);
-                    if(footer.parentElement.className == 'card' && footer.parentElement.parentElement.className == 'card-wrap') {
-                        const card = footer.parentElement;
-                        let added = false;
-                        const media_prev = card.querySelector('div[node-type="feed_list_media_prev"]');
-                        // console.log(media_prev);
-                        if (media_prev) {
-                            const imgs = media_prev.getElementsByTagName('img');
-                            // console.log(imgs);
-                            if(imgs.length > 0) {
-                                sAddDlBtn(footer);
-                                added = true;
+            let cards = document.querySelectorAll('#pl_feedlist_index .card-wrap');
+            for (const card of cards) {
+                sHandleCard(card);
+            }
+            for (const mutation of mutationList) {
+                // console.log(mutation.target);
+                if (mutation.type === 'childList' && mutation.target.tagName === 'DIV' && (mutation.target.getAttribute('node-type') === 'feed_list_media_disp' || mutation.target.getAttribute('node-type') === 'imgBox' || mutation.target.tagName === 'IMG')) {
+                    for (const node of mutation.addedNodes) {
+                        console.log(node);
+                        if (node.tagName === 'IMG') {
+                            const imgPrevBox = node.closest('div[node-type="imagesBox"]');
+                            if (imgPrevBox) {
+                                const thumbImgs = imgPrevBox.querySelectorAll('img[node-type="thumbItem"]');
+                                // console.log(thumbImgs);
+                                let actIdx = 0;
+                                for (const [ idx, thumbImg ] of Object.entries(thumbImgs)) {
+                                    if (thumbImg.parentElement.getElementsByClassName('download-single-button').length === 0) {
+                                        if (thumbImg.getAttribute('node-type') === 'thumbItem') {
+                                            if (thumbImg.parentElement.classList.contains('cur')) {
+                                                actIdx = idx;
+                                            }
+                                        }
+                                    }
+                                }
+                                const actImg = node;
+                                // console.log(actImg);
+                                if (actImg) {
+                                    sAddSingleDlBtn(actImg, parseInt(actIdx));
+                                }
                             }
-                            const videos = card.getElementsByTagName('video');
-                            if(videos.length > 0 && added == false) {
-                                sAddDlBtn(footer);
+                        } else {
+                            const thumbImgs = node.querySelectorAll('img[node-type="thumbItem"]');
+                            // console.log(thumbImgs);
+                            let actIdx = 0;
+                            for (const [ idx, thumbImg ] of Object.entries(thumbImgs)) {
+                                if (thumbImg.parentElement.getElementsByClassName('download-single-button').length === 0) {
+                                    if (thumbImg.getAttribute('node-type') === 'thumbItem') {
+                                        sAddSingleDlBtn(thumbImg, parseInt(idx));
+                                        if (thumbImg.parentElement.classList.contains('cur')) {
+                                            actIdx = idx;
+                                        }
+                                    }
+                                }
+                            }
+                            const actImg = node.querySelector('img[node-type="imgShow"]');
+                            // console.log(actImg);
+                            if (actImg) {
+                                sAddSingleDlBtn(actImg, parseInt(actIdx));
                             }
                         }
                     }
@@ -1824,42 +1980,236 @@
         }
     }).observe(document.body, { attributes: false, childList: true, subtree: true });
 
-    let settingButton = document.createElement('button');
-    settingButton.id = 'wbDlSetBtn';
-    settingButton.textContent = text[6];
-    settingButton.style.position = 'fixed';
-    settingButton.style.top = '4rem';
-    settingButton.style.left = '0rem';
-    settingButton.style.fontSize = '0.7rem';
-    settingButton.style.backgroundColor = 'gray';
-    settingButton.style.color = 'white';
-    settingButton.style.borderWidth = '0.2rem';
-    settingButton.style.borderStyle = 'solid';
-    settingButton.style.borderRadius = '0.5rem';
-    settingButton.style.borderColor = 'lightgrey';
-    settingButton.style.zIndex = 400;
-    settingButton.style.paddingLeft = '1rem';
-    settingButton.style.paddingRight = '1rem';
-    settingButton.style.paddingTop = '0.2rem';
-    settingButton.style.paddingBottom = '0.2rem';
-    settingButton.addEventListener('mouseover', function(event) {
-        settingButton.style.backgroundColor = 'darkgray';
-        settingButton.style.color = 'black';
-    });
-    settingButton.addEventListener('mouseout', function(event) {
+    function addSettingButton() {
+        let settingButton = document.createElement('button');
+        settingButton.id = 'wbDlSetBtn';
+        settingButton.textContent = text[6];
+        settingButton.style.position = 'fixed';
+        settingButton.style.top = '4rem';
+        settingButton.style.left = '0rem';
+        settingButton.style.fontSize = '0.7rem';
         settingButton.style.backgroundColor = 'gray';
         settingButton.style.color = 'white';
-    });
-    settingButton.addEventListener('mousedown', function(event) {
-        settingButton.style.backgroundColor = 'gray';
-        settingButton.style.color = 'white';
-    });
-    settingButton.addEventListener('mouseup', function(event) {
-        settingButton.style.backgroundColor = 'darkgray';
-        settingButton.style.color = 'black';
-    });
-    settingButton.addEventListener('click', showModal);
-    document.body.appendChild(settingButton);
-    GM_registerMenuCommand(text[25], showModal, "0");
-    // console.log(GM_info.downloadMode);
+        settingButton.style.borderWidth = '0.2rem';
+        settingButton.style.borderStyle = 'solid';
+        settingButton.style.borderRadius = '0.5rem';
+        settingButton.style.borderColor = 'lightgrey';
+        settingButton.style.zIndex = 400;
+        settingButton.style.paddingLeft = '1rem';
+        settingButton.style.paddingRight = '1rem';
+        settingButton.style.paddingTop = '0.2rem';
+        settingButton.style.paddingBottom = '0.2rem';
+        settingButton.addEventListener('mouseover', function(event) {
+            settingButton.style.backgroundColor = 'darkgray';
+            settingButton.style.color = 'black';
+        });
+        settingButton.addEventListener('mouseout', function(event) {
+            settingButton.style.backgroundColor = 'gray';
+            settingButton.style.color = 'white';
+        });
+        settingButton.addEventListener('mousedown', function(event) {
+            settingButton.style.backgroundColor = 'gray';
+            settingButton.style.color = 'white';
+        });
+        settingButton.addEventListener('mouseup', function(event) {
+            settingButton.style.backgroundColor = 'darkgray';
+            settingButton.style.color = 'black';
+        });
+        settingButton.addEventListener('click', showModal);
+        document.body.appendChild(settingButton);
+        GM_registerMenuCommand(text[25], showModal, "0");
+        // console.log(GM_info.downloadMode);
+    }
+
+    let listDownloading = false;
+    let stopDownloadingList = false;
+    let listDownloadingIndex = 0;
+    async function downloadList(e) {
+        // console.log(this);
+        if (!listDownloading && !stopDownloadingList) {
+            listDownloading = true;
+            listDownloadingIndex = 0;
+            this.textContent = '停止下载瀑布流';
+            this.disable = true;
+            let retryAttempts = 0;
+            while(!stopDownloadingList) {
+                const homeListDom = document.body.querySelector('div#scroller');
+                const searchListDom = document.body.querySelector('div#pl_feedlist_index');
+                if (homeListDom) {
+                    // console.log(homeListDom);
+                    const contentDoms = homeListDom.querySelectorAll('article.woo-panel-main');
+                    this.textContent = `停止下载瀑布流\n(正在下载第 ${(listDownloadingIndex + 1).toString()} 个动态)`;
+                    const contentDom = contentDoms[listDownloadingIndex];
+                    if (contentDom) {
+                        contentDom.scrollIntoView();
+                        // console.log(contentDom);
+                        const downloadButton = contentDom.querySelector('button.download-button > span.woo-like-count');
+                        if (downloadButton && ((downloadButton.textContent === '下载') || (!GM_getValue('listDownloadSkipAlreadyDownloaded', true) && (downloadButton.textContent === '已下载'))) && !(GM_getValue('listDownloadSkipRetweet', true) && contentDom.querySelector('div.retweet'))) {
+                            const postLink = contentDom.querySelector('a.head-info_time_6sFQg');
+                            const postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
+                            let retweetPostId;
+                            const retweetPostLink = contentDom.querySelector('div.retweet a.head-info_time_6sFQg');
+                            if (retweetPostLink) {
+                                retweetPostId = retweetPostLink.href.split('/')[retweetPostLink.href.split('/').length - 1];
+                            }
+                            console.log(postId, retweetPostId);
+                            downloadButton.textContent = '下载中';
+                            const [downloadList, packName] = await handlePostDownloadById(postId);
+                            await handleDownloadList(downloadList, packName);
+                            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+                            downloadButton.textContent = '已下载';
+                            const downloadSuccess = true;
+                            if (downloadSuccess) {
+                                retryAttempts = 0;
+                            } else {
+                                if (retryAttempts < GM_getValue('listDownloadRetryAttempsLimit', 3)) {
+                                    listDownloadingIndex -= 1;
+                                    retryAttempts += 1;
+                                } else if (confirm(`出现错误${e.message}，已重试 ${retryAttempts} 次，还要继续吗？\n“确定” —— 跳过（一般是接口限制了，建议跳过，手动下载保存。B站真的很严格；\n“取消” —— 停止）`)) {
+                                    // listDownloadingIndex -= 1;
+                                    // retryAttempts += 1;
+                                    retryAttempts = 0;
+                                } else {
+                                    stopDownloadingList = true;
+                                }
+                            }
+                            await sleep(GM_getValue('listDownloadSleepGapSeconds', 3));
+                        } else {
+                            await sleep(0.3);
+                        }
+                        listDownloadingIndex += 1;
+                    } else {
+                        stopDownloadingList = true;
+                    }
+                } else if (searchListDom) {
+                    // console.log(searchListDom);
+                    const contentDoms = searchListDom.querySelectorAll('div.card-wrap');
+                    this.textContent = `停止下载瀑布流\n(正在下载第 ${(listDownloadingIndex + 1).toString()} 个动态)`;
+                    const contentDom = contentDoms[listDownloadingIndex];
+                    if (contentDom) {
+                        contentDom.scrollIntoView();
+                        // console.log(contentDom);
+                        const downloadButton = contentDom.querySelector('button.download-button > span.woo-like-count');
+                        if (downloadButton && ((downloadButton.textContent === '下载') || (!GM_getValue('listDownloadSkipAlreadyDownloaded', true) && (downloadButton.textContent === '已下载'))) && !(GM_getValue('listDownloadSkipRetweet', true) && contentDom.querySelector('div.card-comment'))) {
+                            const postLink = contentDom.querySelector('div.from > a');
+                            const postUrl = postLink.href.split('?')[0];
+                            const postId = postUrl.split('/')[postUrl.split('/').length - 1];
+                            let retweetPostId;
+                            const retweetPostLink = contentDom.querySelector('div.card-comment div.from > a');
+                            if (retweetPostLink) {
+                                const retweetPostUrl = retweetPostLink.href.split('?')[0];
+                                retweetPostId = retweetPostUrl.split('/')[retweetPostUrl.split('/').length - 1];
+                            }
+                            // console.log(postId, retweetPostId);
+                            downloadButton.textContent = '下载中';
+                            const [downloadList, packName] = await handlePostDownloadById(postId);
+                            await handleDownloadList(downloadList, packName);
+                            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+                            downloadButton.textContent = '已下载';
+                            const downloadSuccess = true;
+                            if (downloadSuccess) {
+                                retryAttempts = 0;
+                            } else {
+                                if (retryAttempts < GM_getValue('listDownloadRetryAttempsLimit', 3)) {
+                                    listDownloadingIndex -= 1;
+                                    retryAttempts += 1;
+                                } else if (confirm(`出现错误${e.message}，已重试 ${retryAttempts} 次，还要继续吗？\n“确定” —— 跳过（一般是接口限制了，建议跳过，手动下载保存。B站真的很严格；\n“取消” —— 停止）`)) {
+                                    // listDownloadingIndex -= 1;
+                                    // retryAttempts += 1;
+                                    retryAttempts = 0;
+                                } else {
+                                    stopDownloadingList = true;
+                                }
+                            }
+                            await sleep(GM_getValue('listDownloadSleepGapSeconds', 3));
+                        } else {
+                            await sleep(0.3);
+                        }
+                        listDownloadingIndex += 1;
+                    } else {
+                        stopDownloadingList = true;
+                    }
+                } else {
+                    stopDownloadingList = true;
+                }
+            }
+            listDownloading = false;
+            stopDownloadingList = false;
+            retryAttempts = 0;
+            this.textContent = '下载当前瀑布流';
+            this.disabled = false;
+        } else if (listDownloading && !stopDownloadingList) {
+            stopDownloadingList = true;
+            this.textContent = '正在停止下载瀑布流……';
+        }
+    }
+
+    function addListDownloadButton() {
+        let listDownloadButton = document.createElement('button');
+        listDownloadButton.id = 'listDownloadButton';
+        listDownloadButton.textContent = '下载当前瀑布流';
+        listDownloadButton.style.position = 'fixed';
+        listDownloadButton.style.top = '6rem';
+        listDownloadButton.style.left = '0rem';
+        listDownloadButton.style.fontSize = '0.7rem';
+        listDownloadButton.style.backgroundColor = 'gray';
+        listDownloadButton.style.color = 'white';
+        listDownloadButton.style.borderWidth = '0.2rem';
+        listDownloadButton.style.borderStyle = 'solid';
+        listDownloadButton.style.borderRadius = '0.5rem';
+        listDownloadButton.style.borderColor = 'lightgrey';
+        listDownloadButton.style.zIndex = 400;
+        listDownloadButton.style.paddingLeft = '1rem';
+        listDownloadButton.style.paddingRight = '1rem';
+        listDownloadButton.style.paddingTop = '0.2rem';
+        listDownloadButton.style.paddingBottom = '0.2rem';
+        listDownloadButton.style.textAlign = 'center';
+        listDownloadButton.style.whiteSpace = 'pre';
+        listDownloadButton.style.lineHeight = '1.2rem';
+        listDownloadButton.style.display = 'none';
+        listDownloadButton.addEventListener('mouseover', function(event) {
+            listDownloadButton.style.backgroundColor = 'darkgray';
+            listDownloadButton.style.color = 'black';
+        });
+        listDownloadButton.addEventListener('mouseout', function(event) {
+            listDownloadButton.style.backgroundColor = 'gray';
+            listDownloadButton.style.color = 'white';
+        });
+        listDownloadButton.addEventListener('mousedown', function(event) {
+            listDownloadButton.style.backgroundColor = 'gray';
+            listDownloadButton.style.color = 'white';
+        });
+        listDownloadButton.addEventListener('mouseup', function(event) {
+            listDownloadButton.style.backgroundColor = 'darkgray';
+            listDownloadButton.style.color = 'black';
+        });
+        listDownloadButton.addEventListener('click', downloadList);
+        document.body.appendChild(listDownloadButton);
+    }
+
+    function showListDownloadButton() {
+        const listDownloadButton = document.getElementById('listDownloadButton');
+        if (listDownloadButton) {
+            listDownloadButton.style.display = 'block';
+        }
+    }
+
+    const pushState = history.pushState;
+    const replaceState = history.replaceState;
+
+    history.pushState = function() {
+        pushState.apply(history, arguments);
+        // console.log('Pathname changed:', window.location);
+        showListDownloadButton();
+    };
+
+    history.replaceState = function() {
+        replaceState.apply(history, arguments);
+        // console.log('Pathname changed:', window.location);
+        showListDownloadButton();
+    };
+
+    addSettingButton();
+    // addListDownloadButton();
+    // showListDownloadButton();
 })();
