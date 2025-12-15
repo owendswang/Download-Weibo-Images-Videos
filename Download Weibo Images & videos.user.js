@@ -915,91 +915,24 @@
 
     function resolveActionTarget(card) {
         const footer = card.querySelectorAll('footer')[1] || card.querySelector('footer');
-        const legacyTarget = footer?.firstChild?.firstChild?.firstChild;
-        if (legacyTarget) {
-            return { mode: 'legacy', container: legacyTarget };
+        const header = card.getElementsByTagName('header')[0];
+        const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
+        const postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
+        let retweetPostId;
+        const retweetPostLink = card.querySelector('div.retweet a.head-info_time_6sFQg');
+        if (retweetPostLink) {
+            retweetPostId = retweetPostLink.href.split('/')[retweetPostLink.href.split('/').length - 1];
         }
-        const likeButton = card.querySelector('button.woo-like-main:not(.download-button)');
-        if (!likeButton) {
-            return null;
-        }
-        const likeItem = likeButton.closest('.woo-box-item-flex');
-        if (!likeItem || !likeItem.parentElement) {
-            return null;
-        }
-        return {
-            mode: 'modern',
-            container: likeItem.parentElement,
-            sampleItem: likeItem,
-            sampleButton: likeButton
-        };
-    }
-
-    function addDlBtn(card, actionInfo = null) {
-        if (card.querySelector('button.download-button')) {
-            return;
-        }
-        const info = actionInfo || resolveActionTarget(card);
-        if (!info) {
-            return;
-        }
-        const header = card.querySelector('header');
-        const postLink = findTimeAnchor(header);
-        const postId = extractPostId(postLink?.href);
-        if (!postId) {
-            return;
-        }
-        const retweetLink = findRetweetAnchor(card);
-        const retweetPostId = extractPostId(retweetLink?.href);
-
-        const inlineGroup = info.mode === 'modern' ? info.sampleButton.closest('.woo-box-alignCenter') : null;
-        const prototypeInline = inlineGroup ? info.sampleButton.closest('.woo-box-item-inlineBlock') : null;
-        const inlineMode = Boolean(inlineGroup && prototypeInline);
-
-        let container;
-        let wrapper;
-
-        if (inlineMode) {
-            container = prototypeInline.cloneNode(false);
-            container.classList.add('download-toolbar-item');
-            container.innerHTML = '';
-            container.removeAttribute('attrs');
-
-            const prototypeWrap = prototypeInline.querySelector('.woo-box-flex');
-            const wrap = prototypeWrap ? prototypeWrap.cloneNode(false) : document.createElement('div');
-            wrap.innerHTML = '';
-            wrap.classList.add('download-toolbar-wrap');
-            wrap.removeAttribute('attrs');
-            wrapper = wrap;
-        } else if (info.mode === 'legacy') {
-            container = document.createElement('div');
-            container.className = 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V download-toolbar-item';
-            wrapper = document.createElement('div');
-            wrapper.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_like_20yPI toolbar_likebox_1rLfZ toolbar_wrap_np6Ug download-toolbar-wrap';
-        } else {
-            const prototypeItem = info.sampleItem.cloneNode(false);
-            prototypeItem.classList.add('download-toolbar-item');
-            prototypeItem.innerHTML = '';
-            prototypeItem.removeAttribute('attrs');
-            container = prototypeItem;
-
-            const prototypeWrap = info.sampleItem.querySelector('.woo-box-flex');
-            const wrap = prototypeWrap ? prototypeWrap.cloneNode(false) : document.createElement('div');
-            wrap.innerHTML = '';
-            wrap.classList.add('download-toolbar-wrap');
-            wrap.removeAttribute('attrs');
-            wrapper = wrap;
-        }
-
-        const templateButton = info.mode === 'modern' ? info.sampleButton.cloneNode(false) : document.createElement('button');
-        templateButton.className = info.mode === 'modern' ? info.sampleButton.className : 'woo-like-main toolbar_btn_Cg9tz';
-        templateButton.classList.add('download-button');
-        templateButton.removeAttribute('data-click');
-        templateButton.setAttribute('tabindex', '0');
-        templateButton.setAttribute('title', '下载');
-        templateButton.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
-
-        templateButton.addEventListener('click', async (event) => {
+        let dlBtnDiv = document.createElement('div');
+        dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V';
+        let divInDiv = document.createElement('div');
+        divInDiv.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_like_20yPI toolbar_likebox_1rLfZ toolbar_wrap_np6Ug';
+        let dlBtn = document.createElement('button');
+        dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz download-button';
+        dlBtn.setAttribute('tabindex', '0');
+        dlBtn.setAttribute('title', '下载');
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><i class="woo-font woo-font--imgSave woo-like-icon"></i></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
+        dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
             const dlBtnText = templateButton.querySelector('span.woo-like-count');
             if (dlBtnText) {
@@ -1012,15 +945,10 @@
                 dlBtnText.textContent = '已下载';
             }
         });
-
-        wrapper.appendChild(templateButton);
-        container.appendChild(wrapper);
-
-        if (inlineMode) {
-            inlineGroup.appendChild(container);
-        } else {
-            info.container.appendChild(container);
-        }
+        divInDiv.appendChild(dlBtn);
+        dlBtnDiv.appendChild(divInDiv);
+        footer.firstChild.firstChild.firstChild.appendChild(dlBtnDiv);
+        // console.log('added download button');
     }
 
     function addSingleDlBtn(img, idx = 0) {
