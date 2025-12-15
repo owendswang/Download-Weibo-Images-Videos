@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.6.1
+// @version      1.3.6.2
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
+// @contributor  firo1603
 // @match        https://weibo.com/*
 // @match        https://www.weibo.com/*
 // @match        https://s.weibo.com/weibo*
@@ -17,7 +18,7 @@
 // @icon         https://weibo.com/favicon.ico
 // @license      MIT
 // @homepage     https://greasyfork.org/scripts/430877
-// @supportURL   https://github.com/owendswang/Download-Weibo-Images-Videos
+// @supportURL   https://github.com/firo1603/Download-Weibo-Images-Videos
 // @grant        GM_xmlhttpRequest
 // @grant        GM_notification
 // @grant        GM_getValue
@@ -45,31 +46,21 @@
         }
         const style = document.createElement('style');
         style.id = 'wb-retweet-layout-fix';
+        const base = 'display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;';
+        const rowTargets = [
+            '._retweetBar_m3n8j_98',
+            '.retweet',
+            '.wbpro-feed-content[contenttype="retweet"]',
+            '._retweet_m3n8j_80'
+        ];
         style.textContent = [
-            '._retweetBar_m3n8j_98{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-between!important;gap:0.25rem;}',
-            '._retweetBar_m3n8j_98 footer>div{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:0.35rem;}',
-            '._retweetBar_m3n8j_98 footer .woo-box-alignCenter{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '._retweetBar_m3n8j_98 footer .woo-box-item-inlineBlock{display:flex!important;}',
-            '._retweetBar_m3n8j_98 footer .woo-box-item-inlineBlock>.woo-box-flex{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '._retweetBar_m3n8j_98 footer .download-toolbar-wrap{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '._retweetBar_m3n8j_98 footer .download-toolbar-item{display:flex!important;}',
-            '.retweet footer>div{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:0.35rem;}',
-            '.retweet footer .woo-box-alignCenter{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '.retweet footer .woo-box-item-inlineBlock{display:flex!important;}',
-            '.retweet footer .woo-box-item-inlineBlock>.woo-box-flex{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '.retweet footer .download-toolbar-wrap{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '.retweet footer .download-toolbar-item{display:flex!important;}',
-            '.wbpro-feed-content[contenttype="retweet"] footer>div{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:0.35rem;}',
-            '.wbpro-feed-content[contenttype="retweet"] footer .woo-box-alignCenter{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '.wbpro-feed-content[contenttype="retweet"] footer .woo-box-item-inlineBlock{display:flex!important;}',
-            '.wbpro-feed-content[contenttype="retweet"] footer .woo-box-item-inlineBlock>.woo-box-flex{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '.wbpro-feed-content[contenttype="retweet"] footer .download-toolbar-wrap{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '.wbpro-feed-content[contenttype="retweet"] footer .download-toolbar-item{display:flex!important;}',
-            '._retweet_m3n8j_80 footer{display:flex!important;}',
-            '._retweet_m3n8j_80 footer>div{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:0.35rem;}',
-            '._retweet_m3n8j_80 footer .woo-box-flex{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '._retweet_m3n8j_80 footer .woo-box-item-inlineBlock{display:flex!important;}',
-            '._retweet_m3n8j_80 footer .woo-box-item-inlineBlock>.woo-box-flex{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}'
+            rowTargets.map((sel) => `${sel} footer{${base}justify-content:space-between!important;gap:0.25rem;}`).join(''),
+            rowTargets.map((sel) => `${sel} footer>div{${base}gap:0.35rem;}`).join(''),
+            rowTargets.map((sel) => `${sel} footer .woo-box-alignCenter{${base}}`).join(''),
+            rowTargets.map((sel) => `${sel} footer .woo-box-item-inlineBlock{display:flex!important;}`).join(''),
+            rowTargets.map((sel) => `${sel} footer .woo-box-item-inlineBlock>.woo-box-flex{${base}}`).join(''),
+            rowTargets.map((sel) => `${sel} footer .download-toolbar-wrap{${base}}`).join(''),
+            rowTargets.map((sel) => `${sel} footer .download-toolbar-item{display:flex!important;}`).join('')
         ].join('');
         (document.head || document.documentElement).appendChild(style);
     }
