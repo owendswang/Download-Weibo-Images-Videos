@@ -52,7 +52,24 @@
             '._retweetBar_m3n8j_98 footer .woo-box-item-inlineBlock{display:flex!important;}',
             '._retweetBar_m3n8j_98 footer .woo-box-item-inlineBlock>.woo-box-flex{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
             '._retweetBar_m3n8j_98 footer .download-toolbar-wrap{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
-            '._retweetBar_m3n8j_98 footer .download-toolbar-item{display:flex!important;}'
+            '._retweetBar_m3n8j_98 footer .download-toolbar-item{display:flex!important;}',
+            '.retweet footer>div{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:0.35rem;}',
+            '.retweet footer .woo-box-alignCenter{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
+            '.retweet footer .woo-box-item-inlineBlock{display:flex!important;}',
+            '.retweet footer .woo-box-item-inlineBlock>.woo-box-flex{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
+            '.retweet footer .download-toolbar-wrap{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
+            '.retweet footer .download-toolbar-item{display:flex!important;}',
+            '.wbpro-feed-content[contenttype="retweet"] footer>div{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:0.35rem;}',
+            '.wbpro-feed-content[contenttype="retweet"] footer .woo-box-alignCenter{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
+            '.wbpro-feed-content[contenttype="retweet"] footer .woo-box-item-inlineBlock{display:flex!important;}',
+            '.wbpro-feed-content[contenttype="retweet"] footer .woo-box-item-inlineBlock>.woo-box-flex{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
+            '.wbpro-feed-content[contenttype="retweet"] footer .download-toolbar-wrap{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
+            '.wbpro-feed-content[contenttype="retweet"] footer .download-toolbar-item{display:flex!important;}',
+            '._retweet_m3n8j_80 footer{display:flex!important;}',
+            '._retweet_m3n8j_80 footer>div{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:0.35rem;}',
+            '._retweet_m3n8j_80 footer .woo-box-flex{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}',
+            '._retweet_m3n8j_80 footer .woo-box-item-inlineBlock{display:flex!important;}',
+            '._retweet_m3n8j_80 footer .woo-box-item-inlineBlock>.woo-box-flex{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}'
         ].join('');
         (document.head || document.documentElement).appendChild(style);
     }
@@ -963,7 +980,7 @@
         actionContainer.style.flexDirection = 'row';
         actionContainer.style.flexWrap = 'nowrap';
         actionContainer.style.alignItems = actionContainer.style.alignItems || 'center';
-        actionContainer.querySelectorAll('.woo-box-alignCenter, .woo-box-flex').forEach((block) => {
+        actionContainer.querySelectorAll('.woo-box-alignCenter, .woo-box-flex, footer>div').forEach((block) => {
             block.style.display = block.style.display || 'flex';
             block.style.flexDirection = 'row';
             block.style.flexWrap = 'nowrap';
