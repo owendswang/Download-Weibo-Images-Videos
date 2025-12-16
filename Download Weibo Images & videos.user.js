@@ -1021,6 +1021,7 @@
         }
         const retweetLink = findRetweetAnchor(card);
         const retweetPostId = extractPostId(retweetLink?.href);
+        const dlStatusKey = 'wbDl-' + postId;
 
         let container;
         let wrapper;
@@ -1051,7 +1052,7 @@
         templateButton.removeAttribute('data-click');
         templateButton.setAttribute('tabindex', '0');
         templateButton.setAttribute('title', '下载');
-        templateButton.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
+        templateButton.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">' + (GM_getValue(dlStatusKey, null) ? '已下载' : '下载') + '</span>';
 
         templateButton.addEventListener('click', async (event) => {
             event.preventDefault();
@@ -1061,7 +1062,7 @@
             }
             const [downloadList, packName] = await handlePostDownloadById(postId);
             await handleDownloadList(downloadList, packName);
-            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+            GM_setValue(dlStatusKey, true);
             if (dlBtnText) {
                 dlBtnText.textContent = '已下载';
             }
@@ -1085,6 +1086,7 @@
         }
         const retweetLink = findRetweetAnchor(card);
         const retweetPostId = extractPostId(retweetLink?.href);
+        const dlStatusKey = 'wbDl-' + postId;
 
         const imgCtn = img.parentElement;
         if (!imgCtn || imgCtn.getElementsByClassName('download-single-button').length > 0) {
@@ -1121,7 +1123,7 @@
             }
             const [downloadList, packName] = await handlePostDownloadById(postId, idx);
             await handleDownloadList(downloadList, packName);
-            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+            GM_setValue(dlStatusKey, true);
             if (dlBtnText) {
                 dlBtnText.textContent = '已下载';
             }
@@ -1153,7 +1155,8 @@
         aInLi.setAttribute('href', 'javascript:void(0);');
         let dlBtn = document.createElement('button');
         dlBtn.className = 'woo-like-main toolbar_btn download-button';
-        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
+        const dlStatusKey = 'wbDl-' + postId;
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">' + (GM_getValue(dlStatusKey, null) ? '已下载' : '下载') + '</span>';
         aInLi.addEventListener('click', function(event) { event.preventDefault(); });
         dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
@@ -1161,7 +1164,7 @@
             dlBtnText.textContent = '下载中';
             const [downloadList, packName] = await handlePostDownloadById(postId);
             await handleDownloadList(downloadList, packName);
-            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+            GM_setValue(dlStatusKey, true);
             dlBtnText.textContent = '已下载';
         });
         aInLi.appendChild(dlBtn);
@@ -1204,7 +1207,7 @@
             dlBtnText.textContent = '下载中';
             const [downloadList, packName] = await handlePostDownloadById(postId, idx);
             await handleDownloadList(downloadList, packName);
-            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+            GM_setValue('wbDl-' + postId, true);
             dlBtnText.textContent = '已下载';
         });
         imgCtn.appendChild(dlBtn);
@@ -2226,7 +2229,7 @@
                             downloadButton.textContent = '下载中';
                             const [downloadList, packName] = await handlePostDownloadById(postId);
                             await handleDownloadList(downloadList, packName);
-                            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+                            GM_setValue('wbDl-' + postId, true);
                             downloadButton.textContent = '已下载';
                             const downloadSuccess = true;
                             if (downloadSuccess) {
@@ -2274,7 +2277,7 @@
                             downloadButton.textContent = '下载中';
                             const [downloadList, packName] = await handlePostDownloadById(postId);
                             await handleDownloadList(downloadList, packName);
-                            GM_setValue('wbDl-' + (retweetPostId || postId), true);
+                            GM_setValue('wbDl-' + postId, true);
                             downloadButton.textContent = '已下载';
                             const downloadSuccess = true;
                             if (downloadSuccess) {
