@@ -734,44 +734,89 @@
         return setName.replace(/[<|>|*|"|\/|\|:|?|\n]/g, '_');
     }
 
+    function createZipWorker() {
+        const workerCode = `
+self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.9.1/jszip.min.js');
+self.onmessage = async (e) => {
+    const { entries } = e.data || {};
+    if (!entries || !Array.isArray(entries)) {
+        self.postMessage({ type: 'error', message: 'no entries' });
+        return;
+    }
+    try {
+        const zip = new JSZip();
+        for (const item of entries) {
+            zip.file(item.name, item.buffer, { date: item.mtime ? new Date(item.mtime) : new Date() });
+        }
+        const blob = await zip.generateAsync(
+            {
+                type: 'blob',
+                streamFiles: true,
+                compression: 'STORE',
+                compressionOptions: { level: 0 }
+            },
+            (metadata) => {
+                self.postMessage({ type: 'progress', percent: metadata.percent || 0, currentFile: metadata.currentFile });
+            }
+        );
+        self.postMessage({ type: 'done', blob });
+    } catch (err) {
+        self.postMessage({ type: 'error', message: err && err.message ? err.message : String(err) });
+    }
+};
+`;
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        return new Worker(URL.createObjectURL(blob));
+    }
+
     async function handleDownloadList(downloadList, packName) {
         if (GM_getValue('ariaMode', false)) {
             for (const item of downloadList) {
                 await send2Aria2c(item.url, item.name, item.headerFlag);
             }
         } else if (GM_getValue('zipMode', false)) {
-            let zip = new JSZip();
-            // console.log('zip', zip);
-            let promises = downloadList.map(async function(ele, idx) {
-                return await downloadWrapper(ele.url, ele.name, ele.headerFlag, true).then(function(data) {
-                    // console.log(ele, idx, 'data', data);
-                    const currDate = new Date();
-                    const dateWithOffset = new Date(currDate.getTime() - currDate.getTimezoneOffset() * 60000);
-                    if (data) zip.file(downloadList[idx].name, data, { date: dateWithOffset });
-                });
-            });
-            // console.log('promises', promises);
-            const responseList = await Promise.all(promises);
-            // console.log('responseList', responseList);
-            // console.log('zip', zip);
-            // console.log('generateAsync', zip.generateAsync());
+            const currDate = new Date();
+            const dateWithOffset = new Date(currDate.getTime() - currDate.getTimezoneOffset() * 60000);
+            const files = await Promise.all(downloadList.map(async function(ele, idx) {
+                const data = await downloadWrapper(ele.url, ele.name, ele.headerFlag, true);
+                if (!data) return null;
+                const buffer = await data.arrayBuffer();
+                return { name: downloadList[idx].name, buffer, mtime: dateWithOffset.getTime() };
+            }));
+            const entries = files.filter(Boolean);
+            if (entries.length === 0) {
+                return;
+            }
             downloadQueueTitle.style.display = 'block';
             const packProgress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
             packProgress.firstChild.textContent = packName + ' [0%]';
-            const content = await zip.generateAsync(
-                {
-                    type: 'blob',
-                    streamFiles: true,
-                    compression: 'STORE',
-                    compressionOptions: { level: 0 }
-                },
-                function({ percent, currentFile }) {
-                    const pct = percent || 0;
-                    packProgress.style.background = 'linear-gradient(to right, green ' + pct.toFixed(0) + '%, transparent ' + pct.toFixed(0) + '%)';
-                    packProgress.firstChild.textContent = packName + ' [' + pct.toFixed(0) + '%]';
-                }
-            );
-            if (zip.files && Object.keys(zip.files).length > 0) {
+
+            const worker = createZipWorker();
+            let workerCanceled = false;
+            const transferList = entries.map((item) => item.buffer);
+            const content = await new Promise((resolve, reject) => {
+                worker.onmessage = (event) => {
+                    const { type, percent, blob, message } = event.data || {};
+                    if (type === 'progress') {
+                        const pct = percent || 0;
+                        packProgress.style.background = 'linear-gradient(to right, green ' + pct.toFixed(0) + '%, transparent ' + pct.toFixed(0) + '%)';
+                        packProgress.firstChild.textContent = packName + ' [' + pct.toFixed(0) + '%]';
+                    } else if (type === 'done') {
+                        worker.terminate();
+                        resolve(workerCanceled ? null : blob);
+                    } else if (type === 'error') {
+                        worker.terminate();
+                        reject(new Error(message || 'zip worker error'));
+                    }
+                };
+                worker.postMessage({ entries }, transferList);
+            }).catch((err) => {
+                packProgress.style.background = 'red';
+                packProgress.firstChild.textContent = packName + ' [error: ' + err.message + ']';
+                return null;
+            });
+
+            if (content) {
                 saveAs(content, packName);
             }
             const timeout = setTimeout(() => {
@@ -779,6 +824,8 @@
                 if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
             }, 1000);
             packProgress.lastChild.onclick = function(e) {
+                workerCanceled = true;
+                worker.terminate();
                 clearTimeout(timeout);
                 this.parentNode.remove();
                 if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
