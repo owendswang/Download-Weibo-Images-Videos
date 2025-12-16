@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.6.2
+// @version      1.3.6.3
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -33,8 +33,7 @@
 // @namespace    http://tampermonkey.net/
 // @run-at       document-end
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.9.1/jszip.min.js
-// @downloadURL https://update.greasyfork.org/scripts/430877/Download%20Weibo%20Images%20%20Videos%20%28Only%20support%20new%20version%20weibo%20UI%29.user.js
-// @updateURL https://update.greasyfork.org/scripts/430877/Download%20Weibo%20Images%20%20Videos%20%28Only%20support%20new%20version%20weibo%20UI%29.meta.js
+
 // ==/UserScript==
 
 (function() {
@@ -921,7 +920,7 @@
     }
 
     const MEDIA_IMAGE_SELECTOR = 'img.woo-picture-img,img.picture_focusImg_1z5In,img.picture-viewer_pic_37YQ3,img[class*="_focusImg_"]';
-    const MEDIA_VIDEO_SELECTOR = 'video.picture-viewer_pic_37YQ3,video[class*="_focusVideo_"]';
+    const MEDIA_VIDEO_SELECTOR = 'video.picture-viewer_pic_37YQ3,video[class*="_focusVideo_"],div[class*="_videoBox_"] video,div[class*="_feedVideo_"] video,video.vjs-tech';
 
     function extractPostId(url) {
         if (!url) {
@@ -933,7 +932,8 @@
     }
 
     function findTimeAnchor(scope) {
-        return scope ? scope.querySelector('a[class*="_time_"], a[class*="head-info_time"], a.head-info_time_6sFQg') : null;
+        const target = scope || document;
+        return target.querySelector('a[class*="_time_"], a[class*="head-info_time"], a.head-info_time_6sFQg');
     }
 
     function findRetweetAnchor(card) {
@@ -989,7 +989,7 @@
         }
         enforceActionLayout(info.container);
         const header = card.querySelector('header');
-        const postLink = findTimeAnchor(header);
+        const postLink = findTimeAnchor(header || card);
         const postId = extractPostId(postLink?.href);
         if (!postId) {
             return;
@@ -1053,7 +1053,7 @@
             return;
         }
         const header = card.querySelector('header');
-        const postLink = findTimeAnchor(header);
+        const postLink = findTimeAnchor(header || card);
         const postId = extractPostId(postLink?.href);
         if (!postId) {
             return;
@@ -2038,7 +2038,7 @@
     new MutationObserver((mutationList, observer) => {
         // console.log(mutationList);
         if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
-            const cards = document.body.querySelectorAll('article.woo-panel-main');
+            const cards = document.body.querySelectorAll('article.woo-panel-main, [role="article"]');
             // console.log(cards);
             for (const card of cards) {
                 handleCard(card);
