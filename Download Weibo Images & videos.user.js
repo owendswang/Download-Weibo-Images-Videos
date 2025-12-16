@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.6.3
+// @version      1.3.6.4
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -755,9 +755,34 @@
             // console.log('responseList', responseList);
             // console.log('zip', zip);
             // console.log('generateAsync', zip.generateAsync());
-            const content = await zip.generateAsync({ type: 'blob', streamFiles: true }/*, function({ percent, currentFile }) { console.log(percent); }*/);
-            // console.log('content', content);
-            if (zip.files && Object.keys(zip.files).length > 0) saveAs(content, packName);
+            downloadQueueTitle.style.display = 'block';
+            const packProgress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
+            packProgress.firstChild.textContent = packName + ' [0%]';
+            const content = await zip.generateAsync(
+                {
+                    type: 'blob',
+                    streamFiles: true,
+                    compression: 'STORE',
+                    compressionOptions: { level: 0 }
+                },
+                function({ percent, currentFile }) {
+                    const pct = percent || 0;
+                    packProgress.style.background = 'linear-gradient(to right, green ' + pct.toFixed(0) + '%, transparent ' + pct.toFixed(0) + '%)';
+                    packProgress.firstChild.textContent = packName + ' [' + pct.toFixed(0) + '%]';
+                }
+            );
+            if (zip.files && Object.keys(zip.files).length > 0) {
+                saveAs(content, packName);
+            }
+            const timeout = setTimeout(() => {
+                packProgress.remove();
+                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+            }, 1000);
+            packProgress.lastChild.onclick = function(e) {
+                clearTimeout(timeout);
+                this.parentNode.remove();
+                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+            };
         } else {
             let promises = downloadList.map(function(item, idx) {
                 return downloadWrapper(item.url, item.name, item.headerFlag);
