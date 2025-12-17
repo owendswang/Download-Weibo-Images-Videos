@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.6.4
+// @version      1.3.6.5
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -73,6 +73,9 @@
     }
 
     const settingVersion = 1;
+
+    // 下载结果缓存，避免打包时重复下载同一资源
+    const blobCache = new Map();
 
     injectLayoutFixes();
 
@@ -777,13 +780,30 @@ self.onmessage = async (e) => {
         } else if (GM_getValue('zipMode', false)) {
             const currDate = new Date();
             const dateWithOffset = new Date(currDate.getTime() - currDate.getTimezoneOffset() * 60000);
-            const files = await Promise.all(downloadList.map(async function(ele, idx) {
-                const data = await downloadWrapper(ele.url, ele.name, ele.headerFlag, true);
-                if (!data) return null;
-                const buffer = await data.arrayBuffer();
-                return { name: downloadList[idx].name, buffer, mtime: dateWithOffset.getTime() };
+            const grouped = new Map();
+            downloadList.forEach((ele) => {
+                const key = ele.url + '::' + (ele.headerFlag ? 'h' : 'n');
+                if (!grouped.has(key)) {
+                    grouped.set(key, { url: ele.url, headerFlag: ele.headerFlag, names: [] });
+                }
+                grouped.get(key).names.push(ele.name);
+            });
+
+            const uniqueDownloads = await Promise.all(Array.from(grouped.values()).map(async (item) => {
+                const cacheKey = item.url + '::' + (item.headerFlag ? 'h' : 'n');
+                let buffer = blobCache.get(cacheKey);
+                if (!buffer) {
+                    const data = await downloadWrapper(item.url, item.names[0], item.headerFlag, true);
+                    if (!data) return null;
+                    buffer = await data.arrayBuffer();
+                    blobCache.set(cacheKey, buffer);
+                }
+                return { buffer, names: item.names };
             }));
-            const entries = files.filter(Boolean);
+
+            const entries = uniqueDownloads.filter(Boolean).flatMap((item) => {
+                return item.names.map((name) => ({ name, buffer: item.buffer.slice(0), mtime: dateWithOffset.getTime() }));
+            });
             if (entries.length === 0) {
                 return;
             }
