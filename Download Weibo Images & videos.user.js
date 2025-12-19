@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.6
+// @version      1.3.7
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -778,19 +778,17 @@
         return newList;
     }
 
-    function handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText, vipType) {
+    function handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText) {
         let newList = [];
         let picId = pic.pic_id;
         let picUrl = pic.largest?.url || pic.pic_big?.url;
         let picSize = picUrl.split('/')[3];
         let largePicUrl = picUrl.replace('/' + picSize + '/', GM_getValue('rmWtrMrk', false) ? '/oslarge/' : '/large/');
-        let tmpUrl = 1 == vipType && pic.largest?.url ? pic.largest.url : ('https://weibo.com/ajax/common/download?pid=' + picId);
-        let downloadUrl = GM_getValue('rmWtrMrk', false) ? largePicUrl : tmpUrl;
         let picName = largePicUrl.split('/')[largePicUrl.split('/').length - 1].split('?')[0];
         let originalName = picName.split('.')[0];
         let ext = picName.split('.')[1];
         const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText);
-        newList.push({ url: downloadUrl, name: setName, headerFlag: true });
+        newList.push({ url: largePicUrl, name: setName, headerFlag: true });
         if(pic.hasOwnProperty('video')) {
             let videoUrl = pic.video;
             let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
@@ -834,7 +832,6 @@
         const postTime = status.created_at;
         const text = status.text_raw;
         const pageInfo = status.page_info || resJson.page_info;
-        const vipType = status.mblog_vip_type;
         let downloadList = [];
         if (picInfos) {
             // console.log('download images');
@@ -843,12 +840,12 @@
                 let index = 0;
                 for (const [id, pic] of Object.entries(picInfos)) {
                     index += 1;
-                    downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText, vipType));
+                    downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                 }
             } else {
                 // console.log(idx, picInfos);
                 const pic = Object.entries(picInfos)[idx][1];
-                downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText, vipType));
+                downloadList = downloadList.concat(handlePic(pic, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
             }
         }
         /*if (picIds) {
@@ -869,10 +866,10 @@
                     if(media.type === 'video') {
                         downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         if (GM_getValue('dlVidCov', true)) {
-                            downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText, vipType));
+                            downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                         }
                     } else if (media.type === 'pic') {
-                        downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText, vipType));
+                        downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, index, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 }
             } else {
@@ -880,10 +877,10 @@
                 if(media.type === 'video') {
                     downloadList = downloadList.concat(await handleVideo(media.data.media_info, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     if(GM_getValue('dlVidCov', true)) {
-                        downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText, vipType));
+                        downloadList = downloadList.concat(handlePic(media.data.pic_info, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                     }
                 } else if (media.type === 'pic') {
-                    downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText, vipType));
+                    downloadList = downloadList.concat(handlePic(media.data, padLength, userName, userId, postId, postUid, idx + 1, postTime, text, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText));
                 }
             }
         }
@@ -897,8 +894,8 @@
     function addDlBtn(card) {
         // console.log('add download button');
         const footer = card.querySelectorAll('footer')[1] || card.querySelector('footer');
-        const header = card.getElementsByTagName('header')[0];
-        const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
+        const header = card.querySelector('header');
+        const postLink = header.querySelector('.head-info_time_6sFQg,._time_1tpft_33');
         const postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
         let retweetPostId;
         const retweetPostLink = card.querySelector('div.retweet a.head-info_time_6sFQg');
@@ -906,14 +903,14 @@
             retweetPostId = retweetPostLink.href.split('/')[retweetPostLink.href.split('/').length - 1];
         }
         let dlBtnDiv = document.createElement('div');
-        dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V';
+        dlBtnDiv.className = 'woo-box-item-flex toolbar_item_1ky_D toolbar_cursor_34j5V _item_198pe_23 _cursor_198pe_184';
         let divInDiv = document.createElement('div');
-        divInDiv.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_like_20yPI toolbar_likebox_1rLfZ toolbar_wrap_np6Ug';
+        divInDiv.className = 'woo-box-flex woo-box-alignCenter woo-box-justifyCenter toolbar_like_20yPI toolbar_likebox_1rLfZ toolbar_wrap_np6Ug _likebox_198pe_50 _wrap_198pe_137';
         let dlBtn = document.createElement('button');
-        dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz download-button';
+        dlBtn.className = 'woo-like-main toolbar_btn_Cg9tz _btn_198pe_22 download-button';
         dlBtn.setAttribute('tabindex', '0');
         dlBtn.setAttribute('title', '下载');
-        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><i class="woo-font woo-font--imgSave woo-like-icon"></i></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon" viewBox="0 0 100 100"><path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path><path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path></svg></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
         dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
             const dlBtnText = dlBtn.querySelector('span.woo-like-count');
@@ -925,17 +922,17 @@
         });
         divInDiv.appendChild(dlBtn);
         dlBtnDiv.appendChild(divInDiv);
-        footer.firstChild.firstChild.firstChild.appendChild(dlBtnDiv);
+        footer.querySelector('div > div > div').appendChild(dlBtnDiv);
         // console.log('added download button');
     }
 
     function addSingleDlBtn(img, idx = 0) {
-        // console.log(img);
+        // console.log('addSingleDlBtn: ', img);
         const card = img.closest('article.woo-panel-main');
         const imgCtn = img.parentElement;
         const dlBtn = document.createElement('div');
         const header = card.getElementsByTagName('header')[0];
-        const postLink = header.getElementsByClassName('head-info_time_6sFQg')[0];
+        const postLink = header.querySelector('.head-info_time_6sFQg,._time_1tpft_33');
         const postId = postLink.href.split('/')[postLink.href.split('/').length - 1];
         let retweetPostId;
         const retweetPostLink = card.querySelector('div.retweet a.head-info_time_6sFQg');
@@ -992,7 +989,7 @@
         aInLi.setAttribute('href', 'javascript:void(0);');
         let dlBtn = document.createElement('button');
         dlBtn.className = 'woo-like-main toolbar_btn download-button';
-        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon" viewBox="0 0 100 100"><path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path><path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path></svg></span><span class="woo-like-count">' + (GM_getValue('wbDl-' + (retweetPostId || postId), null) ? '已下载' : '下载') + '</span>';
         aInLi.addEventListener('click', function(event) { event.preventDefault(); });
         dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
@@ -1118,7 +1115,7 @@
     function handleCard(card) {
         // console.log(card);
         const footer = card.querySelectorAll('footer')[1] || card.querySelector('footer');
-        const imgs = card.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3');
+        const imgs = card.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img._focusImg_a2k8z_23,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3,img._pic_1jk00_34');
         // console.log(imgs);
         if (footer) {
             if (footer.getElementsByClassName('download-button').length > 0) {
@@ -1875,12 +1872,6 @@
         window.addEventListener('resize', resizeWindow);
     }
 
-    let svg = document.getElementById('__SVG_SPRITE_NODE__');
-    let symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
-    symbol.id = 'woo_svg_download';
-    symbol.setAttribute('viewBox', '0 0 100 100');
-    symbol.innerHTML = '<path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path><path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path>';
-    svg.appendChild(symbol);
 /*
     if(addDlBtnMode == 0) {
         showModal();
@@ -1906,14 +1897,15 @@
                 if (mutation.type === 'childList' && mutation.target.tagName === 'DIV' && (mutation.target.className.includes('wbpro-feed-content') || mutation.target.className.includes('Feed_retweet_JqZJb'))) {
                     for (const node of mutation.addedNodes) {
                         // console.log(node);
-                        const imgs = node.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3');
+                        const imgs = node.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img._focusImg_a2k8z_23,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3,img._pic_1jk00_34');
                         // console.log(imgs);
                         for (const [ idx, img ] of Object.entries(imgs)) {
                             if (img.parentElement.getElementsByClassName('download-single-button').length === 0) {
-                                if (img.className.includes('picture-viewer_pic_37YQ3')) {
-                                    const previews = node.querySelectorAll('div.picture-viewer_preview_2wOSq');
+                                if (img.className.includes('picture-viewer_pic_37YQ3') || img.className.includes('_pic_1jk00_34')) {
+                                    // console.log('enlarged img: ',img);
+                                    const previews = node.querySelectorAll('div.picture-viewer_preview_2wOSq,div._preview_1jk00_47');
                                     for (const [ index, preview ] of Object.entries(previews)) {
-                                        if (preview.className.includes('picture-viewer_cur_anUEY')) {
+                                        if (preview.className.includes('picture-viewer_cur_anUEY') || preview.className.includes('_cur_1jk00_60')) {
                                             addSingleDlBtn(img, parseInt(index));
                                         }
                                     }
@@ -1934,7 +1926,7 @@
                 // console.log(mutation.target);
                 if (mutation.type === 'childList' && mutation.target.tagName === 'DIV' && (mutation.target.getAttribute('node-type') === 'feed_list_media_disp' || mutation.target.getAttribute('node-type') === 'imgBox' || mutation.target.tagName === 'IMG')) {
                     for (const node of mutation.addedNodes) {
-                        console.log(node);
+                        // console.log(node);
                         if (node.tagName === 'IMG') {
                             const imgPrevBox = node.closest('div[node-type="imagesBox"]');
                             if (imgPrevBox) {
@@ -2054,7 +2046,7 @@
                             if (retweetPostLink) {
                                 retweetPostId = retweetPostLink.href.split('/')[retweetPostLink.href.split('/').length - 1];
                             }
-                            console.log(postId, retweetPostId);
+                            // console.log(postId, retweetPostId);
                             downloadButton.textContent = '下载中';
                             const [downloadList, packName] = await handlePostDownloadById(postId);
                             await handleDownloadList(downloadList, packName);
