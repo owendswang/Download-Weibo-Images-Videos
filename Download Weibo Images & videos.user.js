@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.6.5
+// @version      1.3.6.6
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -38,6 +38,22 @@
 
 (function() {
     'use strict';
+
+    const applyStyles = (el, styles = {}) => {
+        if (!el) return el;
+        Object.assign(el.style, styles);
+        return el;
+    };
+
+    const createEl = (tag, { attrs = {}, styles = {}, html = null, text = null } = {}) => {
+        const el = document.createElement(tag);
+        Object.entries(attrs).forEach(([k, v]) => {
+            if (v !== undefined && v !== null) el.setAttribute(k, v);
+        });
+        if (html !== null) el.innerHTML = html;
+        if (text !== null) el.textContent = text;
+        return applyStyles(el, styles);
+    };
 
     function injectLayoutFixes() {
         if (document.getElementById('wb-retweet-layout-fix')) {
@@ -170,63 +186,113 @@
         text = text_en;
     }
 
-    let downloadQueueCard = document.createElement('div');
-    downloadQueueCard.style.position = 'fixed';
-    downloadQueueCard.style.bottom = '0.5rem';
-    downloadQueueCard.style.left = '0.5rem';
-    downloadQueueCard.style.maxHeight = '50vh';
-    downloadQueueCard.style.overflowY = 'auto';
-    downloadQueueCard.style.overflowX = 'hidden';
-    downloadQueueCard.style.zIndex = '2147483647';
-    let downloadQueueTitle = document.createElement('div');
-    downloadQueueTitle.textContent = text[9];
-    downloadQueueTitle.style.fontSize = '0.8rem';
-    downloadQueueTitle.style.color = 'gray';
-    downloadQueueTitle.style.display = 'none';
+    const downloadQueueCard = createEl('div', {
+        styles: {
+            position: 'fixed',
+            bottom: '0.5rem',
+            left: '0.5rem',
+            maxHeight: '50vh',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            zIndex: '2147483647'
+        }
+    });
+    const downloadQueueTitle = createEl('div', {
+        text: text[9],
+        styles: { fontSize: '0.8rem', color: 'gray', display: 'none' }
+    });
     downloadQueueCard.appendChild(downloadQueueTitle);
     document.body.appendChild(downloadQueueCard);
-    let progressBar = document.createElement('div');
-    progressBar.style.height = '1.4rem';
-    progressBar.style.width = '23rem';
-    // progressBar.style.background = 'linear-gradient(to right, red 100%, transparent 100%)';
-    progressBar.style.borderStyle = 'solid';
-    progressBar.style.borderWidth = '0.1rem';
-    progressBar.style.borderColor = 'grey';
-    progressBar.style.borderRadius = '0.5rem';
-    progressBar.style.boxSizing = 'content-box';
-    progressBar.style.marginTop = '0.5rem';
-    progressBar.style.marginRight = '1rem';
-    progressBar.style.position = 'relative';
-    let progressText = document.createElement('div');
-    // progressText.textContent = 'test.test';
-    progressText.style.mixBlendMode = 'screen';
-    progressText.style.width = '100%';
-    progressText.style.textAlign = 'center';
-    progressText.style.color = 'orange';
-    progressText.style.fontSize = '0.7rem';
-    progressText.style.lineHeight = '1.4rem';
-    progressText.style.overflow = 'hidden';
+
+    const progressBar = createEl('div', {
+        styles: {
+            height: '1.4rem',
+            width: '23rem',
+            borderStyle: 'solid',
+            borderWidth: '0.1rem',
+            borderColor: 'grey',
+            borderRadius: '0.5rem',
+            boxSizing: 'content-box',
+            marginTop: '0.5rem',
+            marginRight: '1rem',
+            position: 'relative'
+        }
+    });
+    const progressText = createEl('div', {
+        styles: {
+            mixBlendMode: 'screen',
+            width: '100%',
+            textAlign: 'center',
+            color: 'orange',
+            fontSize: '0.7rem',
+            lineHeight: '1.4rem',
+            overflow: 'hidden'
+        }
+    });
     progressBar.appendChild(progressText);
-    let progressCloseBtn = document.createElement('button');
-    progressCloseBtn.style.border = 'unset';
-    progressCloseBtn.style.background = 'unset';
-    progressCloseBtn.style.color = 'orange';
-    progressCloseBtn.style.position = 'absolute';
-    progressCloseBtn.style.right = '0';
-    progressCloseBtn.style.top = '0.1rem';
-    progressCloseBtn.style.fontSize = '1rem';
-    progressCloseBtn.style.lineHeight = '1rem';
-    progressCloseBtn.style.cursor = 'pointer';
-    progressCloseBtn.textContent = '×';
-    progressCloseBtn.title = text[12];
-    progressCloseBtn.onmouseover = function(e){
-        this.style.color = 'red';
-    }
-    progressCloseBtn.onmouseout = function(e){
-        this.style.color = 'orange';
-    }
+    const progressCloseBtn = createEl('button', {
+        text: '×',
+        attrs: { title: text[12] },
+        styles: {
+            border: 'unset',
+            background: 'unset',
+            color: 'orange',
+            position: 'absolute',
+            right: '0',
+            top: '0.1rem',
+            fontSize: '1rem',
+            lineHeight: '1rem',
+            cursor: 'pointer'
+        }
+    });
+    progressCloseBtn.onmouseover = function() { this.style.color = 'red'; };
+    progressCloseBtn.onmouseout = function() { this.style.color = 'orange'; };
     progressBar.appendChild(progressCloseBtn);
     // downloadQueueCard.appendChild(progressBar);
+
+    const appendProgress = (label) => {
+        downloadQueueTitle.style.display = 'block';
+        const progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
+        progress.firstChild.textContent = label;
+        progress.lastChild.onclick = () => removeProgress(progress);
+        return progress;
+    };
+
+    const removeProgress = (node) => {
+        if (!node || !node.parentElement) return;
+        node.remove();
+        if (downloadQueueCard.childElementCount === 1) {
+            downloadQueueTitle.style.display = 'none';
+        }
+    };
+
+    const finishProgress = (node, delay = 1000) => {
+        const timeout = setTimeout(() => removeProgress(node), delay);
+        node.lastChild.onclick = () => {
+            clearTimeout(timeout);
+            removeProgress(node);
+        };
+    };
+
+    const setProgress = (node, percent, label) => {
+        const pct = Math.max(0, Math.min(100, percent || 0));
+        node.style.background = 'linear-gradient(to right, green ' + pct.toFixed(0) + '%, transparent ' + pct.toFixed(0) + '%)';
+        if (label) {
+            node.firstChild.textContent = label + ' [' + pct.toFixed(0) + '%]';
+        }
+    };
+
+    const setDownloadButtonState = (btn, downloaded) => {
+        if (!btn) return;
+        const icon = btn.querySelector('use');
+        if (icon) {
+            icon.setAttribute('xlink:href', downloaded ? '#woo_svg_download' : '#woo_svg_download_o');
+        }
+        const label = btn.querySelector('span.woo-like-count');
+        if (label) {
+            label.textContent = downloaded ? '已下载' : '下载';
+        }
+    };
 
     function saveAs(blob, name) {
         const link = document.createElement("a");
@@ -258,9 +324,7 @@
                     if (cookies && cookies.length > 0) {
                         header.push('Cookie: ' + cookies.map((cookie) => (cookie.name + '=' + cookie.value)).join('; '));
                     }
-                    downloadQueueTitle.style.display = 'block';
-                    let progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
-                    progress.firstChild.textContent = fileName;
+                    const progress = appendProgress(fileName);
                     GM_xmlhttpRequest({
                         method: 'POST',
                         url: GM_getValue('ariaRpcUrl','http://localhost:6800/jsonrpc'),
@@ -274,15 +338,7 @@
                         onload: function(response) {
                             // console.log(response.responseText);
                             progress.style.background = 'green';
-                            const timeout = setTimeout(() => {
-                                progress.remove();
-                                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                            }, 1000);
-                            progress.lastChild.onclick = function(e) {
-                                clearTimeout(timeout);
-                                this.parentNode.remove();
-                                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                            }
+                            finishProgress(progress);
                             resolve(response);
                         },
                         onabort: function(e) { resolve(null); },
@@ -291,38 +347,6 @@
                     });
                 }
             })
-            // 下面这种原生的方法，因为安全原因，不被浏览器允许，属于跨域，且在https页面上请求http。
-            /*let oReq = new XMLHttpRequest();
-            oReq.open("POST", GM_getValue('ariaRpcUrl','http://localhost:6800/jsonrpc'));
-            oReq.setRequestHeader('Content-Type', 'application/json')
-            oReq.onload = (e) => {
-                // console.log(response.responseText);
-                progress.style.background = 'green';
-                const timeout = setTimeout(() => {
-                    progress.remove();
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                }, 1000);
-                progress.lastChild.onclick = function(e) {
-                    clearTimeout(timeout);
-                    this.parentNode.remove();
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                }
-                resolve(oReq.response);
-            };
-            oReq.onerror = (e) => { downloadError(e, url, fileName, headerFlag, progress); resolve(null); };
-            oReq.onabort = (e) => { resolve(null); };
-            oReq.ontimeout = (e) => { downloadError(e, url, fileName, headerFlag, progress); resolve(null); };
-            oReq.send(JSON.stringify({
-                jsonrpc: '2.0',
-                id: 'weibo',
-                method: 'aria2.addUri',
-                params: [ [ url ], { header, out: fileName } ],
-            }));
-            progress.lastChild.onclick = function(e) {
-                oReq.abort();
-                this.parentNode.remove();
-                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-            };*/
         });
     }
 
@@ -432,10 +456,7 @@
         progress.lastChild.onmouseout = function(e){
             this.style.color = 'yellow';
         };
-        progress.lastChild.onclick = function(e) {
-            this.parentNode.remove();
-            if(progress.parent.childElementCount == 1) progress.parent.firstChild.style.display = 'none';
-        };
+        progress.lastChild.onclick = function() { removeProgress(progress); };
         // setTimeout(() => { progress.remove(); if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none'; }, 1000);
     }
 
@@ -455,9 +476,7 @@
 
     function downloadWrapper(url, name, headerFlag = false, zipMode = false) {
         // console.log(url);
-        downloadQueueTitle.style.display = 'block';
-        let progress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
-        progress.firstChild.textContent = name + ' [0%]';
+        const progress = appendProgress(name);
         if (zipMode) {
             return new Promise(function(resolve, reject) {
                 const download = GM_xmlhttpRequest({
@@ -469,21 +488,10 @@
                         'Origin': 'https://' + location.host.replace(/^s\./, '')
                     } : null,
                     onprogress: (e) => {
-                        // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
-                        const percent = e.done / e.total * 100;
-                        progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
-                        progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
+                        setProgress(progress, e.done / e.total * 100, name);
                     },
                     onload: ({ status, response }) => {
-                        const timeout = setTimeout(() => {
-                            progress.remove();
-                            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                        }, 1000);
-                        progress.lastChild.onclick = function(e) {
-                            clearTimeout(timeout);
-                            this.parentNode.remove();
-                            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                        };
+                        finishProgress(progress);
                         resolve(response);
                     },
                     onabort: function(e) { resolve(null); },
@@ -492,8 +500,7 @@
                 });
                 progress.lastChild.onclick = function(e) {
                     download.abort();
-                    this.parentNode.remove();
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    removeProgress(this.parentNode);
                 };
                 // 下面这种原生的方法，可以正常下载非V+的资源，遇到V+的资源会报错。
                 /*let oReq = new XMLHttpRequest();
@@ -529,39 +536,6 @@
                 };*/
             });
         } else {
-            /*const download = GM_download({
-                url,
-                name,
-                headers: headerFlag ? {
-                    'Referer': 'https://' + location.host,
-                    'Origin': 'https://' + location.host
-                } : null,
-                onprogress: (e) => {
-                    // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
-                    const percent = e.done / e.total * 100;
-                    progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
-                    progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
-                },
-                onload: ({ status, response }) => {
-                    const timeout = setTimeout(() => {
-                        progress.remove();
-                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                    }, 1000);
-                    progress.lastChild.onclick = function(e) {
-                        clearTimeout(timeout);
-                        this.parentNode.remove();
-                        if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                    }
-                },
-                onerror: (e) => { downloadError(e, url, name, headerFlag, progress); },
-                ontimeout: (e) => { downloadError(e, url, name, headerFlag, progress); },
-            });
-            progress.lastChild.onclick = function(e) {
-                download.abort();
-                this.parentNode.remove();
-                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-            };*/
-            // 这个方法也可以，而且不是走GM_download，不会被油猴设置里的下载选项影响。
             return new Promise(function(resolve, reject) {
                 const download = GM_xmlhttpRequest({
                     method: 'GET',
@@ -571,22 +545,9 @@
                         'Referer': 'https://' + location.host,
                         'Origin': 'https://' + location.host
                     } : null,
-                    onprogress: (e) => {
-                        // e = { int done, finalUrl, bool lengthComputable, int loaded, int position, int readyState, response, str responseHeaders, responseText, responseXML, int status, statusText, int total, int totalSize }
-                        const percent = e.done / e.total * 100;
-                        progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
-                        progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
-                    },
+                    onprogress: (e) => setProgress(progress, e.done / e.total * 100, name),
                     onload: ({ status, response }) => {
-                        const timeout = setTimeout(() => {
-                            progress.remove();
-                            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                        }, 1000);
-                        progress.lastChild.onclick = function(e) {
-                            clearTimeout(timeout);
-                            this.parentNode.remove();
-                            if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                        };
+                        finishProgress(progress);
                         saveAs(response, name);
                         resolve(null);
                     },
@@ -594,94 +555,11 @@
                     onerror: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
                     ontimeout: function(e) { downloadError(e, url, name, headerFlag, progress); resolve(null); },
                 });
-                progress.lastChild.onclick = function(e) {
+                progress.lastChild.onclick = function() {
                     download.abort();
-                    this.parentNode.remove();
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                    removeProgress(progress);
                 };
             });
-            // 下面这种原生的方法，可以正常下载非V+的资源，遇到V+的资源会报错。
-            /*let oReq = new XMLHttpRequest();
-            oReq.open("GET", url);
-            oReq.responseType = 'blob';
-            oReq.onprogress = (e) => {
-                // console.log(e);
-                const percent = e.loaded / e.total * 100;
-                progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
-                progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
-            };
-            oReq.onload = (e) => {
-                const timeout = setTimeout(() => {
-                    progress.remove();
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                }, 1000);
-                progress.lastChild.onclick = function(e) {
-                    clearTimeout(timeout);
-                    this.parentNode.remove();
-                    oReq.abort();
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                };
-                saveAs(oReq.response, name);
-            };
-            oReq.onerror = (e) => { downloadError(e, url, name, headerFlag, progress); };
-            oReq.ontimeout = (e) => { downloadError(e, url, name, headerFlag, progress); };
-            oReq.send();
-            progress.lastChild.onclick = function(e) {
-                this.parentNode.remove();
-                oReq.abort();
-                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-            };*/
-            // 下面fetch的方法，感觉不是很好写，所以就不用下面的方法。
-            /*(async function () {
-                let controller = new AbortController();
-                const response = await fetch(url, { signal: controller.signal });
-                progress.lastChild.onclick = function(e) {
-                    controller.abort();
-                    this.parentNode.remove();
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                }
-                const contentLength = response.headers.get('content-length');
-                const total = parseInt(contentLength, 10);
-                let loaded = 0;
-                const reader = response.body.getReader();
-                const res = new Response(new ReadableStream({
-                    async start(controller) {
-                        while(true) {
-                            const { done, value } = await reader.read();
-                            if (value) loaded += value.length;
-                            const percent = loaded / total * 100;
-                            progress.style.background = 'linear-gradient(to right, green ' + percent + '%, transparent ' + percent + '%)';
-                            progress.firstChild.textContent = name + ' [' + percent.toFixed(0) + '%]';
-                            if (done) {
-                                break;
-                                controller.close();
-                            }
-                        }
-                    }
-                }));
-                const blob = await res.blob();
-                const link = document.createElement("a");
-                link.style.display = "none";
-                link.href = URL.createObjectURL(blob);
-                link.download = name;
-                link.target = '_blank';
-                document.body.appendChild(link);
-                link.click();
-                progress.style.background = 'green';
-                const timeout = setTimeout(() => {
-                    progress.remove();
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                    URL.revokeObjectURL(link.href);
-                    link.parentNode.removeChild(link);
-                }, 1000);
-                progress.lastChild.onclick = function(e) {
-                    clearTimeout(timeout);
-                    this.parentNode.remove();
-                    URL.revokeObjectURL(link.href);
-                    link.parentNode.removeChild(link);
-                    if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-                }
-            })();*/
         }
     }
 
@@ -807,9 +685,7 @@ self.onmessage = async (e) => {
             if (entries.length === 0) {
                 return;
             }
-            downloadQueueTitle.style.display = 'block';
-            const packProgress = downloadQueueCard.appendChild(progressBar.cloneNode(true));
-            packProgress.firstChild.textContent = packName + ' [0%]';
+            const packProgress = appendProgress(packName);
 
             const worker = createZipWorker();
             let workerCanceled = false;
@@ -818,9 +694,7 @@ self.onmessage = async (e) => {
                 worker.onmessage = (event) => {
                     const { type, percent, blob, message } = event.data || {};
                     if (type === 'progress') {
-                        const pct = percent || 0;
-                        packProgress.style.background = 'linear-gradient(to right, green ' + pct.toFixed(0) + '%, transparent ' + pct.toFixed(0) + '%)';
-                        packProgress.firstChild.textContent = packName + ' [' + pct.toFixed(0) + '%]';
+                        setProgress(packProgress, percent || 0, packName);
                     } else if (type === 'done') {
                         worker.terminate();
                         resolve(workerCanceled ? null : blob);
@@ -839,16 +713,12 @@ self.onmessage = async (e) => {
             if (content) {
                 saveAs(content, packName);
             }
-            const timeout = setTimeout(() => {
-                packProgress.remove();
-                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
-            }, 1000);
-            packProgress.lastChild.onclick = function(e) {
+            const timeout = setTimeout(() => removeProgress(packProgress), 1000);
+            packProgress.lastChild.onclick = function() {
                 workerCanceled = true;
                 worker.terminate();
                 clearTimeout(timeout);
-                this.parentNode.remove();
-                if(downloadQueueCard.childElementCount == 1) downloadQueueTitle.style.display = 'none';
+                removeProgress(packProgress);
             };
         } else {
             let promises = downloadList.map(function(item, idx) {
@@ -1119,7 +989,10 @@ self.onmessage = async (e) => {
         templateButton.removeAttribute('data-click');
         templateButton.setAttribute('tabindex', '0');
         templateButton.setAttribute('title', '下载');
-        templateButton.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">' + (GM_getValue(dlStatusKey, null) ? '已下载' : '下载') + '</span>';
+        const downloaded = !!GM_getValue(dlStatusKey, null);
+        const iconId = downloaded ? '#woo_svg_download' : '#woo_svg_download_o';
+        const labelText = downloaded ? '已下载' : '下载';
+        templateButton.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="' + iconId + '"></use></svg></span><span class="woo-like-count">' + labelText + '</span>';
 
         templateButton.addEventListener('click', async (event) => {
             event.preventDefault();
@@ -1130,9 +1003,7 @@ self.onmessage = async (e) => {
             const [downloadList, packName] = await handlePostDownloadById(postId);
             await handleDownloadList(downloadList, packName);
             GM_setValue(dlStatusKey, true);
-            if (dlBtnText) {
-                dlBtnText.textContent = '已下载';
-            }
+            setDownloadButtonState(templateButton, true);
         });
 
         wrapper.appendChild(templateButton);
@@ -1184,16 +1055,13 @@ self.onmessage = async (e) => {
         });
         dlBtn.addEventListener('click', async (event) => {
             event.stopPropagation();
-            const dlBtnText = card.querySelector('button.download-button span.woo-like-count');
-            if (dlBtnText) {
-                dlBtnText.textContent = '下载中';
-            }
+            const mainBtn = card.querySelector('button.download-button');
+            const dlBtnText = mainBtn?.querySelector('span.woo-like-count');
+            if (dlBtnText) dlBtnText.textContent = '下载中';
             const [downloadList, packName] = await handlePostDownloadById(postId, idx);
             await handleDownloadList(downloadList, packName);
             GM_setValue(dlStatusKey, true);
-            if (dlBtnText) {
-                dlBtnText.textContent = '已下载';
-            }
+            setDownloadButtonState(mainBtn, true);
         });
         imgCtn.appendChild(dlBtn);
     }
@@ -1223,16 +1091,19 @@ self.onmessage = async (e) => {
         let dlBtn = document.createElement('button');
         dlBtn.className = 'woo-like-main toolbar_btn download-button';
         const dlStatusKey = 'wbDl-' + postId;
-        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="#woo_svg_download"></use></svg></span><span class="woo-like-count">' + (GM_getValue(dlStatusKey, null) ? '已下载' : '下载') + '</span>';
+        const downloaded = !!GM_getValue(dlStatusKey, null);
+        const iconId = downloaded ? '#woo_svg_download' : '#woo_svg_download_o';
+        const labelText = downloaded ? '已下载' : '下载';
+        dlBtn.innerHTML = '<span class="woo-like-iconWrap"><svg class="woo-like-icon"><use xlink:href="' + iconId + '"></use></svg></span><span class="woo-like-count">' + labelText + '</span>';
         aInLi.addEventListener('click', function(event) { event.preventDefault(); });
         dlBtn.addEventListener('click', async function(event) {
             event.preventDefault();
             const dlBtnText = dlBtn.querySelector('span.woo-like-count');
-            dlBtnText.textContent = '下载中';
+            if (dlBtnText) dlBtnText.textContent = '下载中';
             const [downloadList, packName] = await handlePostDownloadById(postId);
             await handleDownloadList(downloadList, packName);
             GM_setValue(dlStatusKey, true);
-            dlBtnText.textContent = '已下载';
+            setDownloadButtonState(dlBtn, true);
         });
         aInLi.appendChild(dlBtn);
         dlBtnLi.appendChild(dlBtn);
@@ -1270,82 +1141,17 @@ self.onmessage = async (e) => {
         dlBtn.addEventListener('mouseleave', (event) => { dlBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.4)'; dlBtn.style.color = 'dimgray'; });
         dlBtn.addEventListener('click', async function(event) {
             event.stopPropagation();
-            const dlBtnText = card.querySelector('button.download-button').querySelector('span.woo-like-count');
-            dlBtnText.textContent = '下载中';
+            const mainBtn = card.querySelector('button.download-button');
+            const dlBtnText = mainBtn?.querySelector('span.woo-like-count');
+            if (dlBtnText) dlBtnText.textContent = '下载中';
             const [downloadList, packName] = await handlePostDownloadById(postId, idx);
             await handleDownloadList(downloadList, packName);
             GM_setValue('wbDl-' + postId, true);
-            dlBtnText.textContent = '已下载';
+            setDownloadButtonState(mainBtn, true);
         });
         imgCtn.appendChild(dlBtn);
     }
 
-/*
-    function bodyMouseOver(event) {
-        if (location.host == 'weibo.com' || location.host == 'www.weibo.com') {
-            // let arts = document.getElementsByTagName('article');
-            const footers = document.getElementsByTagName('footer');
-            for (const footer of footers) {
-                if(footer.getElementsByClassName('download-button').length > 0) {
-                    // console.log('already added download button');
-                } else {
-                    // console.log(footer.parentElement);
-                    if(footer.parentElement.tagName.toLowerCase() == 'article') {
-                        const article = footer.parentElement;
-                        const imgs = article.getElementsByTagName('img');
-                        let added = false;
-                        // console.log(imgs);
-                        if(imgs.length > 0) {
-                            let addFlag = false;
-                            for (const img of imgs) {
-                                if(['woo-picture-img', 'picture_focusImg_1z5In', 'picture-viewer_pic_37YQ3'].includes(img.className)) {
-                                    addFlag = true;
-                                }
-                            }
-                            if(addFlag == true) {
-                                addDlBtn(footer);
-                                added = true;
-                            }
-                        }
-                        let videos = article.getElementsByTagName('video');
-                        if(videos.length > 0 && added == false) {
-                            addDlBtn(footer);
-                        }
-                    }
-                }
-            }
-        }
-        if (location.host == 's.weibo.com') {
-            // let cards = document.querySelectorAll('#pl_feedlist_index .card-wrap');
-            const footers = document.querySelectorAll('#pl_feedlist_index .card-act');
-            for (const footer of footers) {
-                if(footer.getElementsByClassName('download-button').length > 0) {
-                    // console.log('already added download button');
-                } else {
-                    // console.log(footer.parentElement);
-                    if(footer.parentElement.className == 'card' && footer.parentElement.parentElement.className == 'card-wrap') {
-                        const card = footer.parentElement;
-                        let added = false;
-                        const media_prev = card.querySelector('div[node-type="feed_list_media_prev"]');
-                        // console.log(media_prev);
-                        if (media_prev) {
-                            const imgs = media_prev.getElementsByTagName('img');
-                            // console.log(imgs);
-                            if(imgs.length > 0) {
-                                sAddDlBtn(footer);
-                                added = true;
-                            }
-                            const videos = card.getElementsByTagName('video');
-                            if(videos.length > 0 && added == false) {
-                                sAddDlBtn(footer);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-*/
     function handleCard(card) {
         const actionInfo = resolveActionTarget(card);
         if (!actionInfo) {
@@ -1404,55 +1210,6 @@ self.onmessage = async (e) => {
             }
         }
     }
-/*
-    let startButton = document.createElement('button');
-    startButton.textContent = text[0];
-    startButton.id = 'startButton';
-    startButton.style.position = 'fixed';
-    startButton.style.top = '14rem';
-    startButton.style.left = '1rem';
-    startButton.style.zIndex = 400;
-    startButton.style.backgroundColor = 'black';
-    startButton.style.color = 'lightgray';
-    startButton.style.paddingLeft = '1rem';
-    startButton.style.paddingRight = '1rem';
-    startButton.style.paddingTop = '0.5rem';
-    startButton.style.paddingBottom = '0.5rem';
-    startButton.style.fontWeight = 'bold';
-    startButton.style.borderWidth = '0.15rem';
-    startButton.style.borderColor = 'lightgray';
-    startButton.style.borderRadius = '0.4rem';
-    startButton.style.borderStyle = 'solid';
-    startButton.addEventListener('mouseover', function(event) {
-        startButton.style.backgroundColor = 'lightgray';
-        startButton.style.color = 'black';
-        startButton.style.borderColor = 'black';
-    });
-    startButton.addEventListener('mouseout', function(event) {
-        startButton.style.backgroundColor = 'black';
-        startButton.style.color = 'lightgray';
-        startButton.style.borderColor = 'lightgray';
-    });
-    startButton.addEventListener('mousedown', function(event) {
-        startButton.style.backgroundColor = 'gray';
-    });
-    startButton.addEventListener('mouseup', function(event) {
-        startButton.style.backgroundColor = 'lightgray';
-    });
-    startButton.addEventListener('click', bodyMouseOver);
-
-    function addStartButton() {
-        document.body.appendChild(startButton);
-        document.body.removeEventListener('mouseover', bodyMouseOver)
-    }
-
-    function addEventListener() {
-        document.body.addEventListener('mouseover', bodyMouseOver);
-        if(document.getElementById('startButton')) {
-            document.body.removeChild(startButton);
-        }
-    }
-*/
     // let addDlBtnMode = GM_getValue('addDlBtnMode', 0);
 
     function showModal(event) {
@@ -1492,44 +1249,6 @@ self.onmessage = async (e) => {
         titleBar.style.borderTopLeftRadius = '0.3rem';
         titleBar.style.borderTopRightRadius = '0.3rem';
         modal.appendChild(titleBar);
-        /*let question1 = document.createElement('p');
-        question1.textContent = text[2];
-        question1.style.paddingLeft = '2rem';
-        question1.style.paddingRight = '2rem';
-        question1.style.marginTop = '1rem';
-        question1.style.marginBottom = '1rem';
-        let chooseButton = document.createElement('input');
-        chooseButton.type = 'radio';
-        chooseButton.id = 'chooseButton';
-        chooseButton.name = 'chooseSetting';
-        chooseButton.value = 1;
-        chooseButton.style.margin = '0.5rem 0.5rem 0 0.5rem';
-        let labelForChooseButton = document.createElement('label');
-        labelForChooseButton.htmlFor = 'chooseButton';
-        labelForChooseButton.textContent = text[3];
-        let divForChooseButton = document.createElement('div');
-        divForChooseButton.appendChild(chooseButton);
-        divForChooseButton.appendChild(labelForChooseButton);
-        question1.appendChild(divForChooseButton);
-        let chooseEvent = document.createElement('input');
-        chooseEvent.type = 'radio';
-        chooseEvent.id = 'chooseEvent';
-        chooseEvent.name = 'chooseSetting';
-        chooseEvent.value = 2;
-        chooseEvent.style.margin = '0.5rem 0.5rem 0 0.5rem';
-        if (addDlBtnMode == 2) {
-            chooseEvent.checked = true;
-        } else {
-            chooseButton.checked = true;
-        }
-        let labelForChooseEvent = document.createElement('label');
-        labelForChooseEvent.htmlFor = 'chooseEvent';
-        labelForChooseEvent.textContent = text[4];
-        let divForChooseEvent = document.createElement('div');
-        divForChooseEvent.appendChild(chooseEvent);
-        divForChooseEvent.appendChild(labelForChooseEvent);
-        question1.appendChild(divForChooseEvent);
-        modal.appendChild(question1);*/
         let question2 = document.createElement('p');
         question2.style.paddingLeft = '2rem';
         question2.style.paddingRight = '2rem';
@@ -2118,15 +1837,15 @@ self.onmessage = async (e) => {
         symbol.innerHTML = '<path d="m25,0l50,0l0,50l25,0l-50,50l-50,-50l25,0l0,-50" fill="currentColor"></path><path d="m30,5l40,0l0,50l20,0l-40,40l-40,-40l20,0l0,-50" fill="white"></path>';
         svg.appendChild(symbol);
     }
-/*
-    if(addDlBtnMode == 0) {
-        showModal();
-    } else if (addDlBtnMode == 1) {
-        addStartButton();
-    } else if (addDlBtnMode == 2) {
-        addEventListener();
+
+    let outlineSymbol = svg.querySelector('#woo_svg_download_o');
+    if (!outlineSymbol) {
+        outlineSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+        outlineSymbol.id = 'woo_svg_download_o';
+        outlineSymbol.setAttribute('viewBox', '0 0 100 100');
+        outlineSymbol.innerHTML = '<path d="M25 0h50v50h25L50 100 0 50h25z" fill="none" stroke="currentColor" stroke-width="10" stroke-linejoin="round"></path>';
+        svg.appendChild(outlineSymbol);
     }
-*/
     if(GM_getValue('isSet', null) !== settingVersion) {
         showModal();
     }
@@ -2172,7 +1891,6 @@ self.onmessage = async (e) => {
                 // console.log(mutation.target);
                 if (mutation.type === 'childList' && mutation.target.tagName === 'DIV' && (mutation.target.getAttribute('node-type') === 'feed_list_media_disp' || mutation.target.getAttribute('node-type') === 'imgBox' || mutation.target.tagName === 'IMG')) {
                     for (const node of mutation.addedNodes) {
-                        console.log(node);
                         if (node.tagName === 'IMG') {
                             const imgPrevBox = node.closest('div[node-type="imagesBox"]');
                             if (imgPrevBox) {
