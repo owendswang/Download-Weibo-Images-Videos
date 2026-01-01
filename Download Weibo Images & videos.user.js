@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.3.8
+// @version      1.3.9
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -1982,6 +1982,7 @@
         let settingButton = document.createElement('button');
         settingButton.id = 'wbDlSetBtn';
         settingButton.textContent = text[6];
+        settingButton.style.display = GM_getValue('hidSetBtn', false) ? 'none' : 'block';
         settingButton.style.position = 'fixed';
         settingButton.style.top = '4rem';
         settingButton.style.left = '0rem';
