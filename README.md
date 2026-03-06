@@ -12,6 +12,7 @@ A Tampermonkey script to download weibo images and videos.
 - Support packing all download files as a ZIP file
 - Support downloading by Aria2c
 - Support downloading images without watermarks
+- Support downloading text content to file
 
 ## Screenshot:
 ![1.jpg](res/1.JPG?raw=true)
