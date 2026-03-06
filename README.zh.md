@@ -12,6 +12,7 @@ English Version: [README.md](README.md)
 - 支持打包下载
 - 支持使用Aria2c下载
 - 支持下载无水印图片
+- 支持保存文字内容到文本文件
 
 ## 页面截图：
 ![1.jpg](res/1.JPG?raw=true)
