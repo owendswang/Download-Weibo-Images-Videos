@@ -13,6 +13,7 @@ A Tampermonkey script to download weibo images and videos.
 - Support downloading by Aria2c
 - Support downloading images without watermarks
 - Support downloading text content to file
+- Support downloading all images from a user's album (can't customize file names)
 
 ## Screenshot:
 ![1.jpg](res/1.JPG?raw=true)
