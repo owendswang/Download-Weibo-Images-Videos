@@ -13,6 +13,7 @@ English Version: [README.md](README.md)
 - 支持使用Aria2c下载
 - 支持下载无水印图片
 - 支持保存文字内容到文本文件
+- 支持下载用户相册所有图片（不能自定义文件名称）
 
 ## 页面截图：
 ![1.jpg](res/1.JPG?raw=true)
