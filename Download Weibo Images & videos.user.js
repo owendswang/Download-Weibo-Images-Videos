@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.5.0
+// @version      1.5.1
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -1297,7 +1297,7 @@
     function handleCard(card) {
         // console.log(card);
         const footer = card.querySelectorAll('footer')[1] || card.querySelector('footer');
-        const imgs = card.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img._focusImg_a2k8z_23,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3,img._pic_1jk00_34');
+        const imgs = card.querySelectorAll('img.woo-picture-img,img[class*="_focusImg_"],video[class*="picture-viewer_pic_"],img[class*="_pic_"]');
         // console.log(imgs);
         if (footer) {
             if (footer.getElementsByClassName('download-button').length > 0) {
@@ -2195,7 +2195,7 @@
                     if (mutation.type === 'childList' && mutation.target.tagName === 'DIV' && (mutation.target.className.includes('wbpro-feed-content') || mutation.target.className.includes('Feed_retweet_JqZJb'))) {
                         for (const node of mutation.addedNodes) {
                             // console.log(node);
-                            const imgs = node.querySelectorAll('img.woo-picture-img,img.picture_focusImg_1z5In,img._focusImg_a2k8z_23,img.picture-viewer_pic_37YQ3,video.picture-viewer_pic_37YQ3,img._pic_1jk00_34');
+                            const imgs = node.querySelectorAll('img.woo-picture-img,img[class*="_focusImg_"],video[class*="picture-viewer_pic_"],img[class*="_pic_"]');
                             // console.log(imgs);
                             for (const [ idx, img ] of Object.entries(imgs)) {
                                 if (img.parentElement.getElementsByClassName('download-single-button').length === 0) {
