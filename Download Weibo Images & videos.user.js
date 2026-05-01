@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.5.1
+// @version      1.5.2
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -101,7 +101,8 @@
 /*47*/  '下载当前瀑布流',
 /*48*/  '正在停止下载瀑布流……',
 /*49*/  '下载全部',
-/*50*/  '下载中（点击停止）'
+/*50*/  '下载中（点击停止）',
+/*51*/  '不支持打包，不支持自定义文件名。'
     ];
     let text_en = [
 /*0*/   'Add Download Buttons',
@@ -154,7 +155,8 @@
 /*47*/  'Start list downloading',
 /*48*/  'Stoping list downloading...',
 /*49*/  'Download All',
-/*50*/  'Downloading (Click to stop)'
+/*50*/  'Downloading (Click to stop)',
+/*51*/  'ZIP wrapping and custom file names are not supported here.'
     ];
     if(navigator.language.substr(0, 2) == 'zh') {
         text = text_zh;
@@ -1169,6 +1171,11 @@
     function stopDownloadAlbumAll(dlAllBtn) {
         albumDownloadingAll = false;
         dlAllBtn.querySelector('span').textContent = text[49];
+        dlAllBtn.style.color = 'var(--w-main)';
+        dlAllBtn.style.position = 'absolute';
+        dlAllBtn.style.top = '14px';
+        dlAllBtn.style.right = '14px';
+        dlAllBtn.style.background = 'unset';
     }
     function stopAlbumDownloadAllClickHandler(event) {
         event.stopPropagation();
@@ -1203,6 +1210,7 @@
         dlAllBtn.style.alignItems = 'center';
         dlAllBtn.style.borderRadius = '6px';
         dlAllBtn.innerHTML = '<i class="woo-font woo-font--imgSave"></i><span>' + text[49] + '</span>';
+        dlAllBtn.title = text[51];
         dlAllBtn.addEventListener('mouseenter', (event) => {
             dlAllBtn.style.color = 'var(--w-brand)';
         });
@@ -1215,12 +1223,14 @@
         document.addEventListener('scroll', function (event) {
             // console.log(event.target);
             const parentOffsetTop = albumCard.offsetTop;
-            if (window.scrollY > parentOffsetTop) {
+            if ((window.scrollY > parentOffsetTop) && albumDownloadingAll) {
+                dlAllBtn.style.color = 'white';
                 dlAllBtn.style.position = 'fixed';
                 dlAllBtn.style.top = '110px';
                 dlAllBtn.style.right = 'calc(50% - 240px)';
                 dlAllBtn.style.background = 'rgba(0, 0, 0, 0.7)';
             } else {
+                dlAllBtn.style.color = 'var(--w-main)';
                 dlAllBtn.style.position = 'absolute';
                 dlAllBtn.style.top = '14px';
                 dlAllBtn.style.right = '14px';
