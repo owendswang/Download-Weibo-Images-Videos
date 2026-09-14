@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download Weibo Images & Videos (Only support new version weibo UI)
 // @name:zh-CN   下载微博图片和视频（仅支持新版界面）
-// @version      1.5.2
+// @version      1.5.3
 // @description  Download images and videos from new version weibo UI webpage.
 // @description:zh-CN 从新版微博界面下载图片和视频。
 // @author       OWENDSWANG
@@ -850,12 +850,25 @@
         newList.push({ url: largePicUrl, name: setName, headerFlag: true });
         if(pic.hasOwnProperty('video')) {
             let videoUrl = pic.video;
-            let videoName = videoUrl.split('%2F')[videoUrl.split('%2F').length - 1].split('?')[0];
-            videoName = videoName.split('/')[videoName.split('/').length - 1].split('?')[0];
-            if (!videoName.includes('.')) videoName = videoUrl.split('/')[videoUrl.split('/').length - 1].split('?')[0];
+            let nameSource = videoUrl;
+            for (let i = 0; i < 2; i++) {
+                try {
+                    const decoded = decodeURIComponent(nameSource);
+                    if (decoded === nameSource) break;
+                    nameSource = decoded;
+                } catch (_) {
+                    break;
+                }
+            }
+            const match = nameSource.match(
+                /(?:^|[/=])([^\\/?&#=]+\.(?:mov|mp4|m4v|webm))(?=$|[?&#])/i
+            );
+            let videoName = match ? match[1] : nameSource.split(/[?&#]/)[0].split('/').pop();
+            let dot = videoName.lastIndexOf('.');
+            let originalName = dot < 0 ? videoName : videoName.slice(0, dot);
+            let ext = dot < 0 ? 'mov' : videoName.slice(dot + 1);
+            if (ext.toLowerCase() === 'undefined') ext = 'mov';
             // console.log(videoUrl, videoName);
-            let originalName = videoName.split('.')[0];
-            let ext = videoName.split('.')[1];
             const setName = getName((GM_getValue('retweetMode', false) && retweetPostId) ? GM_getValue('retweetFileName', '{original}.{ext}') : GM_getValue('dlFileName', '{original}.{ext}'), originalName, ext, userName, userId, postId, postUid, index.toString().padStart(padLength, '0'), postTime, textRaw, region, retweetPostId, retweetUserName, retweetUserId, retweetPostUid, retweetPostTime, retweetText, retweetRegion);
             newList.push({ url: videoUrl, name: setName, headerFlag: true });
         }
